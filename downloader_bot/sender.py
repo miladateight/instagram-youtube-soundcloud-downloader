@@ -9,6 +9,7 @@ from aiogram.types import (
 
 from .config import Settings
 from .downloader import DownloadResult
+from .i18n import t
 from .utils import file_kind, human_size, truncate_caption
 
 
@@ -17,15 +18,14 @@ class TelegramSender:
         self.bot = bot
         self.settings = settings
 
-    async def send_result(self, chat_id: int, result: DownloadResult) -> None:
+    async def send_result(self, chat_id: int, result: DownloadResult, language: str = "fa") -> None:
         valid_files = [item for item in result.files if item.size <= self.settings.max_upload_bytes]
         skipped = [item for item in result.files if item.size > self.settings.max_upload_bytes]
 
         if not valid_files:
             await self.bot.send_message(
                 chat_id,
-                "فایل دانلود شد، اما حجم آن از محدودیت ارسال فعلی بزرگ‌تر بود. "
-                f"حد فعلی: {self.settings.max_upload_mb}MB",
+                t(language, "oversized_all", limit=self.settings.max_upload_mb),
             )
             return
 
@@ -43,7 +43,7 @@ class TelegramSender:
             )
             await self.bot.send_message(
                 chat_id,
-                "چند فایل به خاطر حجم بالا ارسال نشدند:\n" + skipped_text,
+                t(language, "skipped_files", files=skipped_text),
             )
 
     async def _send_media_groups(self, chat_id: int, files, kinds, caption: str | None) -> None:
