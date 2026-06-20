@@ -65,3 +65,25 @@ class BotState:
 
     def clear_cookies_path(self) -> None:
         self.delete("cookies_file")
+
+    def user_language(self, user_id: int, default: str = "fa") -> str:
+        return self.get(f"user_language:{user_id}", default) or default
+
+    def set_user_language(self, user_id: int, language: str) -> None:
+        self.set(f"user_language:{user_id}", language)
+
+    def is_force_join_enabled(self) -> bool:
+        return self.get("force_join_enabled", "false") == "true"
+
+    def set_force_join_enabled(self, enabled: bool) -> None:
+        self.set("force_join_enabled", "true" if enabled else "false")
+
+    def force_join_chat(self) -> str | None:
+        value = self.get("force_join_chat")
+        return value.strip() if value and value.strip() else None
+
+    def set_force_join_chat(self, chat: str) -> None:
+        self.set("force_join_chat", chat.strip())
+
+    def clear_force_join_chat(self) -> None:
+        self.delete("force_join_chat")
