@@ -22,10 +22,10 @@
 
 ## نصب سریع روی Ubuntu
 
-بعد از اینکه پروژه را روی GitHub گذاشتی، دستور را با آدرس repo خودت جایگزین کن:
+برای نصب مستقیم از همین ریپو:
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/Downloader.git && cd Downloader && python3 install.py
+git clone https://github.com/miladateight/instagram-youtube-soundcloud-downloader.git && cd instagram-youtube-soundcloud-downloader && python3 install.py
 ```
 
 نصاب از تو می‌پرسد:
@@ -171,7 +171,7 @@ https://on.soundcloud.com/...
 این ربات تا حد ممکن کامل طراحی شده، اما خود Instagram، YouTube و SoundCloud ممکن است ساختار یا محدودیت‌هایشان را تغییر دهند. برای سالم ماندن پروژه، وابستگی `yt-dlp` را به‌روز نگه دار:
 
 ```bash
-cd Downloader
+cd instagram-youtube-soundcloud-downloader
 .venv/bin/pip install --upgrade yt-dlp
 sudo systemctl restart telegram-downloader.service
 ```
