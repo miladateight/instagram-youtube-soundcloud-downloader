@@ -1,48 +1,82 @@
 # Telegram Downloader Bot
 
-ربات خصوصی و قابل ارائه برای دانلود لینک‌های YouTube، YouTube Shorts، Instagram و SoundCloud در تلگرام.
+**Language:** [English](README.md) | [فارسی](README.fa.md) | [العربية](README.ar.md) | [Deutsch](README.de.md)
 
-این پروژه با Python نوشته شده و برای نصب ساده روی Ubuntu آماده است. ربات بعد از نصب به صورت پیش‌فرض غیرفعال می‌ماند و فقط مدیر می‌تواند از داخل تلگرام آن را فعال کند.
+A private, portfolio-ready Telegram bot for downloading supported media from YouTube, YouTube Shorts, Instagram, and SoundCloud.
 
-> نکته حقوقی: این پروژه برای تست، یادگیری و استفاده شخصی ساخته شده است. قبل از استفاده عمومی، قوانین سرویس‌ها، حق نشر، حریم خصوصی و محدودیت‌های Telegram Bot API را بررسی کن.
+The project is written completely in Python and includes a simple Ubuntu installer. The bot stays inactive after installation until the admin enables it from inside Telegram.
 
-## قابلیت‌ها
+> Legal note: This project is intended for testing, learning, and personal use. Before public or production use, review platform terms, copyright rules, privacy rules, and Telegram Bot API limits.
 
-- تشخیص خودکار لینک‌های YouTube، `youtu.be`، Shorts، Instagram و SoundCloud
-- دانلود و ارسال ویدیو، عکس، فایل صوتی و فایل‌های عمومی قابل دریافت با `yt-dlp`
-- پشتیبانی از پست‌ها، ریلزها و بسیاری از carouselهای Instagram
-- ارسال پست‌های چندتایی Instagram به شکل album/media group
-- قرار دادن caption روی اولین فایل ارسالی
-- پنل مدیریتی داخل خود ربات
-- فعال‌سازی/غیرفعال‌سازی از داخل تلگرام
-- آپلود و حذف `cookies.txt` توسط مدیر از داخل ربات
-- محدودسازی ربات به مدیر یا باز کردن دسترسی عمومی با تنظیم `.env`
-- نصب با Python و اجرای دائمی با systemd
-- لاگ فایل داخل `logs/bot.log`
+## Features
 
-## نصب سریع روی Ubuntu
+- Automatic link detection for YouTube, `youtu.be`, Shorts, Instagram, and SoundCloud
+- Video, photo, audio, and document delivery through `yt-dlp`
+- Instagram posts, Reels, profiles, and many carousel posts
+- Instagram multi-item posts sent as Telegram albums/media groups
+- Captions added to the first uploaded file
+- Four-language bot UI: Persian, English, Arabic, and German
+- User language selection with `/language`
+- Admin activation from inside Telegram
+- Admin-managed `cookies.txt` upload and removal
+- Admin-controlled forced channel subscription
+- Private-by-default access, with optional public mode through `.env`
+- Python installer and systemd service for Ubuntu
+- Service logs in `logs/bot.log`
 
-برای نصب مستقیم از همین ریپو:
+## Quick Install On Ubuntu
 
 ```bash
 git clone https://github.com/miladateight/instagram-youtube-soundcloud-downloader.git && cd instagram-youtube-soundcloud-downloader && python3 install.py
 ```
 
-نصاب از تو می‌پرسد:
+The installer asks for:
 
-- نام ربات
-- توکن ربات از BotFather
-- آیدی عددی مدیر
+- Bot name
+- Bot token from BotFather
+- Admin numeric Telegram ID
 
-بعد از نصب، در تلگرام به ربات پیام بده و به عنوان مدیر دستور زیر را بزن:
+After installation, open the bot in Telegram as the admin and send:
 
 ```text
 /activate
 ```
 
-تا وقتی این دستور اجرا نشود، ربات هیچ دانلودی انجام نمی‌دهد.
+The bot will not download anything until it is activated.
 
-## مدیریت سرویس
+## Bot Commands
+
+- `/start` starts the bot and shows language selection
+- `/language` or `/lang` changes the user language
+- `/help` shows the help text
+- `/id` shows the user's numeric Telegram ID
+- `/status` shows bot status
+- `/admin` opens the admin panel
+- `/activate` enables downloads
+- `/deactivate` disables downloads
+- `/cookies` explains how to upload cookies
+- `/clearcookies` removes saved cookies
+- `/forcejoin` shows forced subscription status
+- `/forcejoin_on @channel` enables forced subscription
+- `/forcejoin_off` disables forced subscription
+
+## Forced Subscription
+
+The admin can require users to join a Telegram channel before downloading.
+
+```text
+/forcejoin_on @your_channel
+```
+
+To disable it:
+
+```text
+/forcejoin_off
+```
+
+The bot must be a member or admin in the required channel so Telegram can verify membership. Admin users are not blocked by forced subscription.
+
+## Service Management
 
 ```bash
 sudo systemctl status telegram-downloader.service
@@ -50,13 +84,13 @@ sudo journalctl -u telegram-downloader.service -f
 sudo systemctl restart telegram-downloader.service
 ```
 
-برای حذف سرویس:
+Uninstall the service:
 
 ```bash
 python3 uninstall.py
 ```
 
-## اجرای دستی برای توسعه
+## Development Run
 
 ```bash
 cp .env.example .env
@@ -64,76 +98,42 @@ nano .env
 python3 run.py
 ```
 
-## اجرای تست‌ها
+## Tests
 
 ```bash
 python3 -m unittest discover -s tests
 ```
 
-## دستورهای داخل ربات
+## Cookies For Instagram And YouTube
 
-- `/start` شروع و راهنما
-- `/help` راهنما
-- `/id` نمایش آیدی عددی کاربر
-- `/status` نمایش وضعیت ربات
-- `/admin` پنل مدیر
-- `/activate` فعال کردن دانلودها
-- `/deactivate` غیرفعال کردن دانلودها
-- `/cookies` راهنمای آپلود cookies
-- `/clearcookies` حذف cookies ذخیره‌شده
+Some Instagram or YouTube links may require login. The admin can upload `cookies.txt` from inside Telegram:
 
-## فعال‌سازی و امنیت
+1. Log in through a browser.
+2. Export cookies in Netscape `cookies.txt` format.
+3. Send the file to the bot.
 
-ربات بعد از نصب inactive است. حتی اگر سرویس systemd روشن باشد، تا وقتی مدیر `/activate` نزند دانلود انجام نمی‌شود.
-
-در حالت پیش‌فرض فقط مدیر می‌تواند از ربات استفاده کند:
-
-```env
-ALLOW_ALL_USERS=false
-```
-
-اگر برای دمو خواستی همه بتوانند بعد از فعال‌سازی از آن استفاده کنند:
-
-```env
-ALLOW_ALL_USERS=true
-```
-
-سپس سرویس را ری‌استارت کن:
-
-```bash
-sudo systemctl restart telegram-downloader.service
-```
-
-## Cookies برای Instagram و YouTube
-
-بعضی لینک‌های Instagram یا YouTube بدون لاگین دانلود نمی‌شوند. مدیر می‌تواند از داخل خود ربات cookies بدهد:
-
-1. در مرورگر وارد حساب خودت شو.
-2. cookies را با فرمت Netscape `cookies.txt` خروجی بگیر.
-3. فایل `cookies.txt` را به ربات بفرست.
-
-اگر اسم فایل مشخص نیست، آن را با کپشن زیر ارسال کن:
+If the file name is not clear, send it with this caption:
 
 ```text
 /cookies
 ```
 
-ربات فایل cookies را داخل `data/cookies.txt` ذخیره می‌کند. این فایل حساس است و در `.gitignore` قرار دارد؛ آن را داخل GitHub نگذار.
+The bot stores cookies in `data/cookies.txt`. This file is sensitive and is ignored by Git.
 
-## CAPTCHA و پیام I'm not a robot
+## CAPTCHA And "I'm not a robot"
 
-ربات CAPTCHA را دور نمی‌زند و روی پیام‌هایی مثل `I'm not a robot` کلیک خودکار نمی‌کند. این کار از نظر فنی پایدار نیست و می‌تواند خلاف قوانین سرویس‌ها باشد.
+The bot does not bypass CAPTCHA and does not automatically click verification prompts such as `I'm not a robot`.
 
-اگر Instagram یا YouTube چنین چیزی خواست:
+If Instagram or YouTube asks for a security challenge:
 
-1. مدیر باید در مرورگر خودش لاگین کند.
-2. اگر CAPTCHA یا چالش امنیتی آمد، همان‌جا دستی حلش کند.
-3. بعد cookies را با فرمت Netscape `cookies.txt` خروجی بگیرد.
-4. فایل را از داخل تلگرام برای ربات بفرستد.
+1. The admin logs in manually in a browser.
+2. The admin solves the challenge manually.
+3. The admin exports cookies in Netscape `cookies.txt` format.
+4. The admin uploads the file to the bot.
 
-این روش احتمال خطاهای لاگین را کم می‌کند، اما تضمین نمی‌کند که سرویس مقصد هیچ‌وقت دوباره چالش امنیتی نخواهد.
+This improves login reliability but cannot guarantee that a platform will never request verification again.
 
-## تنظیمات `.env`
+## `.env` Settings
 
 ```env
 BOT_NAME=DownloaderBot
@@ -149,11 +149,11 @@ LOG_DIR=logs
 COOKIES_FILE=
 ```
 
-`PLAYLIST_LIMIT` جلوی دانلود ناخواسته تعداد زیادی فایل از profile یا playlist را می‌گیرد.
+`PLAYLIST_LIMIT` protects the server from very large profile or playlist downloads.
 
-`MAX_UPLOAD_MB` باید با محدودیت ارسال Bot API محیط تو هماهنگ باشد. مقدار پیش‌فرض محافظه‌کارانه است.
+`MAX_UPLOAD_MB` should match your Telegram Bot API upload capability.
 
-## لینک‌های نمونه
+## Example Links
 
 ```text
 https://youtube.com/shorts/...
@@ -166,9 +166,9 @@ https://soundcloud.com/...
 https://on.soundcloud.com/...
 ```
 
-## محدودیت‌های واقعی
+## Keeping Download Support Healthy
 
-این ربات تا حد ممکن کامل طراحی شده، اما خود Instagram، YouTube و SoundCloud ممکن است ساختار یا محدودیت‌هایشان را تغییر دهند. برای سالم ماندن پروژه، وابستگی `yt-dlp` را به‌روز نگه دار:
+Instagram, YouTube, and SoundCloud may change their pages or restrictions. Keep `yt-dlp` updated:
 
 ```bash
 cd instagram-youtube-soundcloud-downloader
