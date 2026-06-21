@@ -11,18 +11,19 @@
 ## الميزات
 
 - اكتشاف تلقائي لروابط YouTube و `youtu.be` و Shorts و Instagram و SoundCloud
-- إرسال الفيديو والصور والصوت والملفات العامة عبر `yt-dlp`
+- تنزيل وإرسال الفيديو والصور والصوت والملفات العامة عبر `yt-dlp`
 - دعم منشورات Instagram و Reels والملفات الشخصية والعديد من منشورات carousel
 - إرسال منشورات Instagram متعددة العناصر كألبوم أو media group
-- وضع الوصف على أول ملف مرسل
+- التعامل مع الوصف الطويل عبر معاينة قصيرة وزر لعرض الوصف الكامل
 - واجهة بوت بأربع لغات: الفارسية، الإنجليزية، العربية، والألمانية
-- اختيار لغة المستخدم عبر `/language`
-- تفعيل المدير للبوت من داخل تيليجرام
-- رفع وحذف `cookies.txt` بواسطة المدير
+- سؤال المستخدم عن اللغة مرة واحدة فقط، وتغييرها لاحقاً عبر `/language`
+- تفعيل البوت بواسطة المدير من داخل تيليجرام
+- فتح وإغلاق الوصول العام عبر `/public_on` و `/public_off`
+- رفع cookies شخصية بواسطة المستخدمين المسموح لهم، وcookies عامة بواسطة المدير
 - اشتراك إجباري في قناة يتحكم به المدير
-- وصول خاص افتراضياً، مع إمكانية فتحه للعامة من خلال `.env`
-- مثبت Python وخدمة systemd على Ubuntu
-- سجلات الخدمة داخل `logs/bot.log`
+- إرسال SoundCloud بشكل أفضل مع صورة الغلاف واسم المقطع واسم الفنان
+- تثبيت وتحديث وإزالة كاملة عبر سكربتات Python على Ubuntu
+- تشغيل دائم عبر systemd وسجلات داخل `logs/bot.log`
 
 ## التثبيت السريع على Ubuntu
 
@@ -44,21 +45,38 @@ git clone https://github.com/miladateight/instagram-youtube-soundcloud-downloade
 
 لن يقوم البوت بأي تنزيل حتى يتم تفعيله.
 
-## أوامر البوت
+## أوامر المستخدم
 
-- `/start` بدء البوت وعرض اختيار اللغة
+- `/start` يبدأ البوت؛ إذا كانت اللغة محفوظة يعرض رسالة قصيرة فقط
 - `/language` أو `/lang` تغيير لغة المستخدم
 - `/help` عرض المساعدة
 - `/id` عرض المعرّف الرقمي للمستخدم
 - `/status` عرض حالة البوت
+- `/cookies` شرح رفع cookies الشخصية
+- `/clearcookies` حذف cookies الشخصية المحفوظة
+
+## أوامر المدير
+
 - `/admin` فتح لوحة المدير
 - `/activate` تفعيل التنزيلات
 - `/deactivate` تعطيل التنزيلات
-- `/cookies` شرح رفع cookies
-- `/clearcookies` حذف cookies المحفوظة
+- `/public_on` فتح الوصول العام
+- `/public_off` إغلاق الوصول العام
+- `/clearcookies global` حذف cookies العامة للبوت
 - `/forcejoin` عرض حالة الاشتراك الإجباري
 - `/forcejoin_on @channel` تفعيل الاشتراك الإجباري
 - `/forcejoin_off` تعطيل الاشتراك الإجباري
+
+## الوصول العام
+
+البوت خاص افتراضياً. يستطيع المدير فتح أو إغلاق الوصول العام من داخل البوت:
+
+```text
+/public_on
+/public_off
+```
+
+إذا كان الوصول العام مغلقاً، يستطيع المدير والمستخدمون المسموح لهم فقط استخدام البوت.
 
 ## الاشتراك الإجباري
 
@@ -76,7 +94,29 @@ git clone https://github.com/miladateight/instagram-youtube-soundcloud-downloade
 
 يجب أن يكون البوت عضواً أو مديراً في القناة المطلوبة حتى يستطيع Telegram التحقق من العضوية. المدير لا يتم منعه بسبب الاشتراك الإجباري.
 
-## إدارة الخدمة
+## Cookies لـ Instagram و YouTube
+
+قد تحتاج بعض روابط Instagram أو YouTube إلى تسجيل دخول. يستطيع كل مستخدم مسموح له رفع ملف cookies شخصي باسم `cookies.txt`. لا يتم حفظ كلمات المرور؛ يتم حفظ ملف cookies فقط على الخادم ويمكن حذفه عبر `/clearcookies`.
+
+لإنشاء cookies:
+
+1. سجّل الدخول من المتصفح.
+2. صدّر cookies بصيغة Netscape `cookies.txt`.
+3. أرسل الملف إلى البوت.
+
+يستطيع المدير حفظ cookies عامة للبوت بإرسال `cookies.txt` مع الوصف `global`، ثم حذفها عبر:
+
+```text
+/clearcookies global
+```
+
+## CAPTCHA ورسالة "I'm not a robot"
+
+البوت لا يتجاوز CAPTCHA ولا يضغط تلقائياً على رسائل مثل `I'm not a robot`.
+
+إذا طلب Instagram أو YouTube تحدياً أمنياً، يجب على المستخدم تسجيل الدخول يدوياً في المتصفح، حل التحدي يدوياً، تصدير cookies بصيغة Netscape، ثم رفع `cookies.txt` إلى البوت. هذا يقلل مشاكل تسجيل الدخول، لكنه لا يضمن أن المنصة لن تطلب تحققاً مرة أخرى.
+
+## إدارة الخادم
 
 ```bash
 sudo systemctl status telegram-downloader.service
@@ -84,11 +124,26 @@ sudo journalctl -u telegram-downloader.service -f
 sudo systemctl restart telegram-downloader.service
 ```
 
-إزالة الخدمة:
+لتحديث البرنامج والاعتماديات وإعادة تشغيل الخدمة:
+
+```bash
+cd instagram-youtube-soundcloud-downloader
+python3 update.py
+```
+
+لإزالة خدمة systemd فقط:
 
 ```bash
 python3 uninstall.py
 ```
+
+لإزالة الخدمة وحذف مجلد المشروع بالكامل:
+
+```bash
+python3 remove.py
+```
+
+`remove.py` يطلب تأكيداً واضحاً قبل الحذف الكامل.
 
 ## التشغيل اليدوي للتطوير
 
@@ -103,35 +158,6 @@ python3 run.py
 ```bash
 python3 -m unittest discover -s tests
 ```
-
-## Cookies لـ Instagram و YouTube
-
-قد تحتاج بعض روابط Instagram أو YouTube إلى تسجيل دخول. يمكن للمدير رفع `cookies.txt` من داخل تيليجرام:
-
-1. سجّل الدخول من المتصفح.
-2. صدّر cookies بصيغة Netscape `cookies.txt`.
-3. أرسل الملف إلى البوت.
-
-إذا لم يكن اسم الملف واضحاً، أرسله مع الوصف التالي:
-
-```text
-/cookies
-```
-
-يحفظ البوت cookies داخل `data/cookies.txt`. هذا الملف حساس ويتم تجاهله من Git.
-
-## CAPTCHA ورسالة "I'm not a robot"
-
-البوت لا يتجاوز CAPTCHA ولا يضغط تلقائياً على رسائل مثل `I'm not a robot`.
-
-إذا طلب Instagram أو YouTube تحدياً أمنياً:
-
-1. يقوم المدير بتسجيل الدخول يدوياً في المتصفح.
-2. يحل التحدي يدوياً.
-3. يصدّر cookies بصيغة Netscape `cookies.txt`.
-4. يرفع الملف إلى البوت من داخل تيليجرام.
-
-هذا يقلل مشاكل تسجيل الدخول، لكنه لا يضمن أن المنصة لن تطلب تحققاً مرة أخرى.
 
 ## إعدادات `.env`
 
@@ -168,10 +194,4 @@ https://on.soundcloud.com/...
 
 ## الحفاظ على دعم التنزيل
 
-قد يغير Instagram و YouTube و SoundCloud صفحاتهم أو قيودهم. حافظ على تحديث `yt-dlp`:
-
-```bash
-cd instagram-youtube-soundcloud-downloader
-.venv/bin/pip install --upgrade yt-dlp
-sudo systemctl restart telegram-downloader.service
-```
+قد يغير Instagram و YouTube و SoundCloud صفحاتهم أو قيودهم. للحفاظ على عمل المشروع، حدّث `yt-dlp` دائماً واستخدم `python3 update.py`.
