@@ -14,15 +14,16 @@
 - دانلود و ارسال ویدیو، عکس، فایل صوتی و فایل‌های عمومی با `yt-dlp`
 - پشتیبانی از پست‌ها، ریلزها، پروفایل‌ها و بسیاری از carouselهای Instagram
 - ارسال پست‌های چندتایی Instagram به شکل album/media group
-- قرار دادن caption روی اولین فایل ارسالی
+- مدیریت caption طولانی با پیش‌نمایش کوتاه و دکمه «دریافت کامل کپشن»
 - رابط کاربری چهارزبانه: فارسی، انگلیسی، عربی و آلمانی
-- انتخاب زبان کاربر با `/language`
+- انتخاب زبان کاربر فقط بار اول، و تغییر بعدی با `/language`
 - فعال‌سازی ربات توسط مدیر از داخل تلگرام
-- آپلود و حذف `cookies.txt` توسط مدیر از داخل ربات
+- باز و بسته کردن دسترسی عمومی با `/public_on` و `/public_off`
+- آپلود cookies شخصی توسط کاربران مجاز و cookies عمومی توسط مدیر
 - عضویت اجباری قابل فعال/غیرفعال‌سازی توسط مدیر
-- دسترسی خصوصی به صورت پیش‌فرض، با امکان عمومی‌سازی از طریق `.env`
-- نصب با Python و اجرای دائمی با systemd روی Ubuntu
-- لاگ فایل داخل `logs/bot.log`
+- ارسال بهتر SoundCloud با کاور، نام آهنگ و نام خواننده
+- نصب، آپدیت و حذف کامل با اسکریپت‌های Python روی Ubuntu
+- اجرای دائمی با systemd و لاگ داخل `logs/bot.log`
 
 ## نصب سریع روی Ubuntu
 
@@ -44,21 +45,38 @@ git clone https://github.com/miladateight/instagram-youtube-soundcloud-downloade
 
 تا وقتی این دستور اجرا نشود، ربات هیچ دانلودی انجام نمی‌دهد.
 
-## دستورهای داخل ربات
+## دستورهای کاربر
 
-- `/start` شروع ربات و نمایش انتخاب زبان
+- `/start` شروع ربات؛ اگر زبان قبلاً انتخاب شده باشد فقط پیام کوتاه می‌دهد
 - `/language` یا `/lang` تغییر زبان کاربر
 - `/help` راهنما
 - `/id` نمایش آیدی عددی کاربر
 - `/status` نمایش وضعیت ربات
+- `/cookies` راهنمای آپلود cookies شخصی
+- `/clearcookies` حذف cookies شخصی ذخیره‌شده
+
+## دستورهای مدیر
+
 - `/admin` پنل مدیر
 - `/activate` فعال کردن دانلودها
 - `/deactivate` غیرفعال کردن دانلودها
-- `/cookies` راهنمای آپلود cookies
-- `/clearcookies` حذف cookies ذخیره‌شده
+- `/public_on` باز کردن دسترسی عمومی
+- `/public_off` بستن دسترسی عمومی
+- `/clearcookies global` حذف cookies عمومی ربات
 - `/forcejoin` وضعیت عضویت اجباری
 - `/forcejoin_on @channel` فعال کردن عضویت اجباری
 - `/forcejoin_off` غیرفعال کردن عضویت اجباری
+
+## دسترسی عمومی
+
+ربات به صورت پیش‌فرض خصوصی است. مدیر می‌تواند از داخل ربات دسترسی عمومی را باز یا بسته کند:
+
+```text
+/public_on
+/public_off
+```
+
+اگر دسترسی عمومی بسته باشد، فقط مدیر و کاربرانی که در تنظیمات مجاز شده‌اند می‌توانند از ربات استفاده کنند.
 
 ## عضویت اجباری
 
@@ -76,7 +94,29 @@ git clone https://github.com/miladateight/instagram-youtube-soundcloud-downloade
 
 ربات باید داخل کانال مورد نظر عضو یا ادمین باشد تا Telegram اجازه بررسی عضویت را بدهد. مدیر ربات توسط عضویت اجباری محدود نمی‌شود.
 
-## مدیریت سرویس
+## Cookies برای Instagram و YouTube
+
+بعضی لینک‌های Instagram یا YouTube بدون لاگین دانلود نمی‌شوند. کاربر مجاز می‌تواند cookies شخصی خودش را با فایل `cookies.txt` به ربات بدهد. رمز عبور ذخیره نمی‌شود؛ فقط فایل cookies روی سرور می‌ماند و با `/clearcookies` حذف می‌شود.
+
+برای ساخت cookies:
+
+1. در مرورگر وارد حساب خودت شو.
+2. cookies را با فرمت Netscape `cookies.txt` خروجی بگیر.
+3. فایل را به ربات بفرست.
+
+مدیر می‌تواند cookies عمومی ربات را با ارسال `cookies.txt` و کپشن `global` ذخیره کند و با دستور زیر حذف کند:
+
+```text
+/clearcookies global
+```
+
+## CAPTCHA و پیام "I'm not a robot"
+
+ربات CAPTCHA را دور نمی‌زند و روی پیام‌هایی مثل `I'm not a robot` کلیک خودکار نمی‌کند.
+
+اگر Instagram یا YouTube چنین چالشی خواست، کاربر باید در مرورگر خودش لاگین کند، چالش را دستی حل کند، cookies را خروجی بگیرد و فایل `cookies.txt` را به ربات بدهد. این روش خطاهای لاگین را کمتر می‌کند، اما تضمین نمی‌کند که سرویس مقصد هیچ‌وقت دوباره چالش امنیتی نخواهد.
+
+## مدیریت روی سرور
 
 ```bash
 sudo systemctl status telegram-downloader.service
@@ -84,11 +124,26 @@ sudo journalctl -u telegram-downloader.service -f
 sudo systemctl restart telegram-downloader.service
 ```
 
-برای حذف سرویس:
+برای آپدیت برنامه، dependencyها و restart سرویس:
+
+```bash
+cd instagram-youtube-soundcloud-downloader
+python3 update.py
+```
+
+برای حذف فقط سرویس systemd:
 
 ```bash
 python3 uninstall.py
 ```
+
+برای حذف سرویس و کل پوشه پروژه:
+
+```bash
+python3 remove.py
+```
+
+`remove.py` قبل از حذف کامل از تو تایید جدی می‌گیرد.
 
 ## اجرای دستی برای توسعه
 
@@ -103,35 +158,6 @@ python3 run.py
 ```bash
 python3 -m unittest discover -s tests
 ```
-
-## Cookies برای Instagram و YouTube
-
-بعضی لینک‌های Instagram یا YouTube بدون لاگین دانلود نمی‌شوند. مدیر می‌تواند از داخل خود ربات `cookies.txt` بدهد:
-
-1. در مرورگر وارد حساب خودت شو.
-2. cookies را با فرمت Netscape `cookies.txt` خروجی بگیر.
-3. فایل را به ربات بفرست.
-
-اگر اسم فایل مشخص نیست، آن را با کپشن زیر ارسال کن:
-
-```text
-/cookies
-```
-
-ربات فایل cookies را داخل `data/cookies.txt` ذخیره می‌کند. این فایل حساس است و در Git قرار نمی‌گیرد.
-
-## CAPTCHA و پیام "I'm not a robot"
-
-ربات CAPTCHA را دور نمی‌زند و روی پیام‌هایی مثل `I'm not a robot` کلیک خودکار نمی‌کند.
-
-اگر Instagram یا YouTube چنین چالشی خواست:
-
-1. مدیر باید در مرورگر خودش لاگین کند.
-2. چالش امنیتی را دستی حل کند.
-3. cookies را با فرمت Netscape `cookies.txt` خروجی بگیرد.
-4. فایل را از داخل تلگرام برای ربات بفرستد.
-
-این روش احتمال خطاهای لاگین را کم می‌کند، اما تضمین نمی‌کند که سرویس مقصد هیچ‌وقت دوباره چالش امنیتی نخواهد.
 
 ## تنظیمات `.env`
 
@@ -168,10 +194,4 @@ https://on.soundcloud.com/...
 
 ## سالم نگه داشتن دانلودها
 
-Instagram، YouTube و SoundCloud ممکن است ساختار یا محدودیت‌هایشان را تغییر دهند. برای سالم ماندن پروژه، `yt-dlp` را به‌روز نگه دار:
-
-```bash
-cd instagram-youtube-soundcloud-downloader
-.venv/bin/pip install --upgrade yt-dlp
-sudo systemctl restart telegram-downloader.service
-```
+Instagram، YouTube و SoundCloud ممکن است ساختار یا محدودیت‌هایشان را تغییر دهند. برای سالم ماندن پروژه، همیشه `yt-dlp` را به‌روز نگه دار و از `python3 update.py` استفاده کن.
