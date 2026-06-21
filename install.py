@@ -48,8 +48,8 @@ def current_service_user() -> str:
     return getpass.getuser()
 
 
-def systemd_quote(path: Path) -> str:
-    return '"' + str(path).replace("\\", "\\\\").replace('"', '\\"') + '"'
+def systemd_path(path: Path) -> str:
+    return str(path)
 
 
 def install_system_packages() -> None:
@@ -108,8 +108,7 @@ def write_env(bot_name: str, bot_token: str, admin_id: str) -> None:
         pass
 
 
-def install_service(python_bin: Path) -> None:
-    service_user = current_service_user()
+def build_service_text(python_bin: Path, service_user: str) -> str:
     service_text = f"""[Unit]
 Description=Telegram Downloader Bot
 After=network-online.target
@@ -118,15 +117,20 @@ Wants=network-online.target
 [Service]
 Type=simple
 User={service_user}
-WorkingDirectory={systemd_quote(PROJECT_DIR)}
-EnvironmentFile={systemd_quote(PROJECT_DIR / ".env")}
-ExecStart={systemd_quote(python_bin)} -m downloader_bot
+WorkingDirectory={systemd_path(PROJECT_DIR)}
+EnvironmentFile={systemd_path(PROJECT_DIR / ".env")}
+ExecStart={systemd_path(python_bin)} -m downloader_bot
 Restart=always
 RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
 """
+    return service_text
+
+
+def install_service(python_bin: Path) -> None:
+    service_text = build_service_text(python_bin, current_service_user())
     temp_service = PROJECT_DIR / f".{SERVICE_NAME}.tmp"
     temp_service.write_text(service_text, encoding="utf-8")
     run(sudo_command(["mv", str(temp_service), f"/etc/systemd/system/{SERVICE_NAME}"]))
