@@ -15,19 +15,30 @@ The project is written completely in Python and includes a simple Ubuntu install
 - Instagram posts, Reels, profiles, and many carousel posts
 - Instagram multi-item posts sent as Telegram albums/media groups
 - Captions added to the first uploaded file
+- Long captions are shortened safely with a "Get full caption" button
+- SoundCloud cover art is sent before the audio when available
 - Four-language bot UI: Persian, English, Arabic, and German
-- User language selection with `/language`
+- One-time user language selection, with manual changes through `/language`
 - Admin activation from inside Telegram
-- Admin-managed `cookies.txt` upload and removal
+- Personal per-user `cookies.txt` upload and removal
+- Optional admin global `cookies.txt`
 - Admin-controlled forced channel subscription
-- Private-by-default access, with optional public mode through `.env`
+- Private-by-default access, with public mode controlled from the admin panel
 - Python installer and systemd service for Ubuntu
+- Update and full removal scripts for Ubuntu servers
 - Service logs in `logs/bot.log`
 
 ## Quick Install On Ubuntu
 
 ```bash
-git clone https://github.com/miladateight/instagram-youtube-soundcloud-downloader.git && cd instagram-youtube-soundcloud-downloader && python3 install.py
+bash -c 'set -e; repo=instagram-youtube-soundcloud-downloader; if [ -f install.py ] && [ -d .git ]; then python3 install.py; elif [ -d "$repo/.git" ]; then cd "$repo" && python3 update.py; elif [ -e "$repo" ]; then echo "$repo already exists but is not a git checkout. Remove it first or choose another directory."; exit 1; else git clone https://github.com/miladateight/instagram-youtube-soundcloud-downloader.git "$repo" && cd "$repo" && python3 install.py; fi'
+```
+
+If the repository already exists on the server, update it instead of cloning inside itself:
+
+```bash
+cd instagram-youtube-soundcloud-downloader
+python3 update.py
 ```
 
 The installer asks for:
@@ -46,7 +57,7 @@ The bot will not download anything until it is activated.
 
 ## Bot Commands
 
-- `/start` starts the bot and shows language selection
+- `/start` starts the bot; language is requested only once
 - `/language` or `/lang` changes the user language
 - `/help` shows the help text
 - `/id` shows the user's numeric Telegram ID
@@ -54,8 +65,11 @@ The bot will not download anything until it is activated.
 - `/admin` opens the admin panel
 - `/activate` enables downloads
 - `/deactivate` disables downloads
+- `/public_on` opens public access
+- `/public_off` closes public access
 - `/cookies` explains how to upload cookies
-- `/clearcookies` removes saved cookies
+- `/clearcookies` removes the user's personal cookies
+- `/clearcookies global` removes admin global cookies
 - `/forcejoin` shows forced subscription status
 - `/forcejoin_on @channel` enables forced subscription
 - `/forcejoin_off` disables forced subscription
@@ -84,10 +98,22 @@ sudo journalctl -u telegram-downloader.service -f
 sudo systemctl restart telegram-downloader.service
 ```
 
-Uninstall the service:
+Update the installed bot:
+
+```bash
+python3 update.py
+```
+
+Uninstall only the systemd service:
 
 ```bash
 python3 uninstall.py
+```
+
+Remove the service and delete the project directory:
+
+```bash
+python3 remove.py
 ```
 
 ## Development Run
@@ -106,7 +132,7 @@ python3 -m unittest discover -s tests
 
 ## Cookies For Instagram And YouTube
 
-Some Instagram or YouTube links may require login. The admin can upload `cookies.txt` from inside Telegram:
+Some Instagram or YouTube links may require login. Each allowed user can upload a personal `cookies.txt` file from inside Telegram:
 
 1. Log in through a browser.
 2. Export cookies in Netscape `cookies.txt` format.
@@ -118,7 +144,15 @@ If the file name is not clear, send it with this caption:
 /cookies
 ```
 
-The bot stores cookies in `data/cookies.txt`. This file is sensitive and is ignored by Git.
+The bot stores personal cookies in `data/user_cookies/`. Passwords are not stored; only the exported cookies file is kept on the server. A user can remove their personal cookies with `/clearcookies`.
+
+The admin can upload global bot cookies by sending `cookies.txt` with the caption:
+
+```text
+global
+```
+
+Admin global cookies are stored in `data/cookies.txt` and can be removed with `/clearcookies global`. Cookie files are sensitive and are ignored by Git.
 
 ## CAPTCHA And "I'm not a robot"
 
@@ -126,10 +160,10 @@ The bot does not bypass CAPTCHA and does not automatically click verification pr
 
 If Instagram or YouTube asks for a security challenge:
 
-1. The admin logs in manually in a browser.
-2. The admin solves the challenge manually.
-3. The admin exports cookies in Netscape `cookies.txt` format.
-4. The admin uploads the file to the bot.
+1. The user or admin logs in manually in a browser.
+2. The challenge is solved manually in the browser.
+3. Cookies are exported in Netscape `cookies.txt` format.
+4. The cookies file is uploaded to the bot.
 
 This improves login reliability but cannot guarantee that a platform will never request verification again.
 
@@ -148,6 +182,8 @@ DATA_DIR=data
 LOG_DIR=logs
 COOKIES_FILE=
 ```
+
+`ALLOW_ALL_USERS` is only the initial default. After installation, the admin can change public access with `/public_on`, `/public_off`, or the admin panel.
 
 `PLAYLIST_LIMIT` protects the server from very large profile or playlist downloads.
 
@@ -168,10 +204,9 @@ https://on.soundcloud.com/...
 
 ## Keeping Download Support Healthy
 
-Instagram, YouTube, and SoundCloud may change their pages or restrictions. Keep `yt-dlp` updated:
+Instagram, YouTube, and SoundCloud may change their pages or restrictions. Keep the bot and `yt-dlp` updated:
 
 ```bash
 cd instagram-youtube-soundcloud-downloader
-.venv/bin/pip install --upgrade yt-dlp
-sudo systemctl restart telegram-downloader.service
+python3 update.py
 ```

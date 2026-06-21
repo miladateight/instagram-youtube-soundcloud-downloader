@@ -22,6 +22,7 @@ class DownloadedMedia:
 class DownloadResult:
     title: str
     caption: str | None
+    uploader: str | None
     source_url: str
     files: list[DownloadedMedia]
     workdir: Path
@@ -40,7 +41,7 @@ class Downloader:
     def _download_sync(self, url: str, cookies_file: Path | None = None) -> DownloadResult:
         workdir = Path(tempfile.mkdtemp(prefix="job-", dir=self.settings.download_dir))
         try:
-            options = self._build_options(workdir, cookies_file)
+            options = self._build_options(workdir, cookies_file, self._should_write_thumbnail(url))
             with YoutubeDL(options) as ydl:
                 info = ydl.extract_info(url, download=True)
 
@@ -51,6 +52,7 @@ class Downloader:
             return DownloadResult(
                 title=self._title_from_info(info),
                 caption=self._caption_from_info(info),
+                uploader=self._uploader_from_info(info),
                 source_url=info.get("webpage_url") or url if isinstance(info, dict) else url,
                 files=files,
                 workdir=workdir,
@@ -62,20 +64,25 @@ class Downloader:
             self.cleanup(workdir)
             raise
 
-    def _build_options(self, workdir: Path, cookies_file: Path | None) -> dict[str, Any]:
+    def _build_options(
+        self,
+        workdir: Path,
+        cookies_file: Path | None,
+        write_thumbnail: bool = False,
+    ) -> dict[str, Any]:
         options: dict[str, Any] = {
             "paths": {"home": str(workdir)},
             "outtmpl": {
-                "default": "%(extractor)s_%(id)s_%(title).90B.%(ext)s",
-                "thumbnail": "%(extractor)s_%(id)s_%(title).90B.%(ext)s",
+                "default": "%(title).120B.%(ext)s",
+                "thumbnail": "%(title).120B.%(ext)s",
             },
             "format": "bv*+ba/best",
             "merge_output_format": "mp4",
+            "writethumbnail": write_thumbnail,
             "noplaylist": False,
             "playlistend": self.settings.playlist_limit,
             "max_filesize": self.settings.max_upload_bytes,
             "ignoreerrors": False,
-            "restrictfilenames": True,
             "windowsfilenames": True,
             "quiet": True,
             "no_warnings": True,
@@ -88,6 +95,11 @@ class Downloader:
             options["cookiefile"] = str(cookies_file)
 
         return options
+
+    @staticmethod
+    def _should_write_thumbnail(url: str) -> bool:
+        lowered = url.lower()
+        return "soundcloud.com" in lowered or "on.soundcloud.com" in lowered
 
     @staticmethod
     def _collect_files(workdir: Path, info: Any) -> list[DownloadedMedia]:
@@ -145,6 +157,27 @@ class Downloader:
         if isinstance(info, dict):
             return str(info.get("title") or info.get("fulltitle") or "Downloaded media")
         return "Downloaded media"
+
+    @staticmethod
+    def _uploader_from_info(info: Any) -> str | None:
+        if not isinstance(info, dict):
+            return None
+        value = info.get("uploader") or info.get("channel") or info.get("artist") or info.get("creator")
+        if value:
+            return str(value)
+        entries = info.get("entries")
+        if isinstance(entries, list):
+            for entry in entries:
+                if isinstance(entry, dict):
+                    entry_value = (
+                        entry.get("uploader")
+                        or entry.get("channel")
+                        or entry.get("artist")
+                        or entry.get("creator")
+                    )
+                    if entry_value:
+                        return str(entry_value)
+        return None
 
     @staticmethod
     def _caption_from_info(info: Any) -> str | None:

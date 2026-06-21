@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import secrets
 from contextlib import suppress
 from pathlib import Path
 
@@ -51,8 +52,11 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
     def is_admin(message: Message) -> bool:
         return is_admin_id(message_user_id(message))
 
+    def public_access_enabled() -> bool:
+        return state.public_access(settings.allow_all_users)
+
     def is_allowed(message: Message) -> bool:
-        return settings.allow_all_users or is_admin(message)
+        return public_access_enabled() or is_admin(message)
 
     def default_language(message: Message) -> str:
         language_code = message.from_user.language_code if message.from_user else None
@@ -65,7 +69,11 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
         language_code = callback.from_user.language_code if callback.from_user else None
         return state.user_language(callback_user_id(callback), normalize_language(language_code))
 
-    def active_cookies_path() -> Path | None:
+    def active_cookies_path(user_id: int | None = None) -> Path | None:
+        if user_id:
+            user_path = state.user_cookies_path(user_id)
+            if user_path and user_path.exists():
+                return user_path
         state_path = state.cookies_path()
         if state_path and state_path.exists():
             return state_path
@@ -115,6 +123,16 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
                     )
                 ]
             )
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=t(language, "button_public_off")
+                    if public_access_enabled()
+                    else t(language, "button_public_on"),
+                    callback_data="admin:public_off" if public_access_enabled() else "admin:public_on",
+                )
+            ]
+        )
         return InlineKeyboardMarkup(inline_keyboard=rows)
 
     def force_join_keyboard(language: str) -> InlineKeyboardMarkup:
@@ -150,7 +168,7 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
             "status",
             bot_name=settings.bot_name,
             active=status_label(language, state.is_active()),
-            public_access=status_label(language, settings.allow_all_users),
+            public_access=status_label(language, public_access_enabled()),
             force_join=status_label(language, state.is_force_join_enabled()),
             force_join_channel=force_join_chat,
             max_upload_mb=settings.max_upload_mb,
@@ -247,13 +265,12 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
 
     async def send_start_help(message: Message, bot: Bot) -> None:
         language = message_language(message)
-        await message.answer(t(language, "choose_language"), reply_markup=language_keyboard())
+        if not state.has_user_language(message_user_id(message)):
+            await message.answer(t(language, "choose_language"), reply_markup=language_keyboard())
+            return
 
         if is_admin(message):
-            await message.answer(
-                t(language, "help") + "\n\n" + t(language, "admin_help"),
-                reply_markup=admin_keyboard(language),
-            )
+            await message.answer(t(language, "start_ready"), reply_markup=admin_keyboard(language))
             return
 
         if not state.is_active():
@@ -269,7 +286,7 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
                 await message.answer(t(language, "membership_check_failed"))
                 return
 
-        await message.answer(t(language, "help"))
+        await message.answer(t(language, "start_ready"))
 
     @dp.message(CommandStart())
     async def start(message: Message, bot: Bot) -> None:
@@ -291,7 +308,7 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
             language = "fa"
         state.set_user_language(callback_user_id(callback), language)
         if callback.message:
-            await callback.message.answer(t(language, "language_selected"), reply_markup=language_keyboard())
+            await callback.message.answer(t(language, "language_selected"))
         await callback.answer()
 
     @dp.message(Command("help"))
@@ -339,23 +356,51 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
     @dp.message(Command("cookies"))
     async def cookies_command(message: Message) -> None:
         language = message_language(message)
-        if not is_admin(message):
-            await message.answer(t(language, "command_admin_only"))
+        if not is_allowed(message):
+            await message.answer(t(language, "private_bot"), reply_markup=language_keyboard())
             return
         await message.answer(t(language, "cookie_help"))
 
     @dp.message(Command("clearcookies"))
     async def clear_cookies_command(message: Message) -> None:
         language = message_language(message)
+        if not is_allowed(message):
+            await message.answer(t(language, "private_bot"), reply_markup=language_keyboard())
+            return
+
+        if is_admin(message) and "global" in (message.text or "").lower():
+            cookies = state.cookies_path() or (settings.data_dir / "cookies.txt")
+            with suppress(OSError):
+                if cookies.exists() and cookies.is_file():
+                    cookies.unlink()
+            state.clear_cookies_path()
+            await message.answer(t(language, "cookies_cleared"))
+            return
+
+        cookies = state.user_cookies_path(message_user_id(message))
+        with suppress(OSError):
+            if cookies and cookies.exists() and cookies.is_file():
+                cookies.unlink()
+        state.clear_user_cookies_path(message_user_id(message))
+        await message.answer(t(language, "personal_cookies_cleared"))
+
+    @dp.message(Command("public_on", "publicon"))
+    async def public_on_command(message: Message) -> None:
+        language = message_language(message)
         if not is_admin(message):
             await message.answer(t(language, "command_admin_only"))
             return
-        cookies = state.cookies_path() or (settings.data_dir / "cookies.txt")
-        with suppress(OSError):
-            if cookies.exists() and cookies.is_file():
-                cookies.unlink()
-        state.clear_cookies_path()
-        await message.answer(t(language, "cookies_cleared"))
+        state.set_public_access(True)
+        await message.answer(t(language, "public_enabled"), reply_markup=admin_keyboard(language))
+
+    @dp.message(Command("public_off", "publicoff"))
+    async def public_off_command(message: Message) -> None:
+        language = message_language(message)
+        if not is_admin(message):
+            await message.answer(t(language, "command_admin_only"))
+            return
+        state.set_public_access(False)
+        await message.answer(t(language, "public_disabled"), reply_markup=admin_keyboard(language))
 
     @dp.message(Command("forcejoin"))
     async def force_join_command(message: Message) -> None:
@@ -439,6 +484,12 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
         elif action == "forcejoin_off":
             state.set_force_join_enabled(False)
             text = t(language, "force_join_disabled") + "\n\n" + force_join_status_text(language)
+        elif action == "public_on":
+            state.set_public_access(True)
+            text = t(language, "public_enabled") + "\n\n" + status_text(language)
+        elif action == "public_off":
+            state.set_public_access(False)
+            text = t(language, "public_disabled") + "\n\n" + status_text(language)
         else:
             text = status_text(language)
 
@@ -449,7 +500,7 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
     @dp.message(F.document)
     async def handle_document(message: Message, bot: Bot) -> None:
         language = message_language(message)
-        if not is_admin(message):
+        if not is_allowed(message):
             await message.answer(t(language, "private_bot"))
             return
 
@@ -468,8 +519,13 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
             await message.answer(t(language, "cookies_too_large"))
             return
 
-        target = settings.data_dir / "cookies.txt"
-        temp_target = settings.data_dir / "cookies.upload"
+        is_global_cookie = is_admin(message) and "global" in caption
+        if is_global_cookie:
+            target = settings.data_dir / "cookies.txt"
+        else:
+            target = settings.data_dir / "user_cookies" / f"{message_user_id(message)}.txt"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        temp_target = target.with_suffix(".upload")
         with suppress(OSError):
             temp_target.unlink()
 
@@ -481,8 +537,25 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
             return
 
         temp_target.replace(target)
-        state.set_cookies_path(target)
-        await message.answer(t(language, "cookies_saved"))
+        if is_global_cookie:
+            state.set_cookies_path(target)
+            await message.answer(t(language, "global_cookies_saved"))
+        else:
+            state.set_user_cookies_path(message_user_id(message), target)
+            await message.answer(t(language, "personal_cookies_saved"))
+
+    @dp.callback_query(F.data.startswith("caption:"))
+    async def caption_callback(callback: CallbackQuery) -> None:
+        language = callback_language(callback)
+        caption_id = callback.data.split(":", 1)[1] if callback.data else ""
+        caption = state.caption(caption_id)
+        if not caption:
+            await callback.answer(t(language, "caption_unavailable"), show_alert=True)
+            return
+        if callback.message:
+            for start in range(0, len(caption), 3900):
+                await callback.message.answer(caption[start : start + 3900])
+        await callback.answer()
 
     @dp.message(F.text)
     async def handle_text(message: Message, bot: Bot) -> None:
@@ -505,7 +578,7 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
         if len(urls) > 1:
             await message.answer(t(language, "multiple_links", count=len(urls)))
 
-        sender = TelegramSender(bot, settings)
+        sender = TelegramSender(bot, settings, state)
         for url in urls:
             platform = detect_platform(url)
             status_message = await message.answer(
@@ -520,7 +593,7 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
             try:
                 async with semaphore:
                     await bot.send_chat_action(message.chat.id, ChatAction.UPLOAD_DOCUMENT)
-                    cookies_path = active_cookies_path()
+                    cookies_path = active_cookies_path(message_user_id(message))
                     await status_message.edit_text(
                         t(
                             language,
@@ -531,7 +604,12 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
                     )
                     result = await downloader.download(url, cookies_path)
                     await status_message.edit_text(t(language, "uploading"))
-                    await sender.send_result(message.chat.id, result, language)
+                    await sender.send_result(
+                        message.chat.id,
+                        result,
+                        language,
+                        secrets.token_urlsafe(8),
+                    )
                     with suppress(Exception):
                         await status_message.delete()
             except Exception as exc:

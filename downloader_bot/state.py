@@ -56,6 +56,13 @@ class BotState:
     def set_active(self, active: bool) -> None:
         self.set("active", "true" if active else "false")
 
+    def public_access(self, default: bool = False) -> bool:
+        fallback = "true" if default else "false"
+        return self.get("public_access", fallback) == "true"
+
+    def set_public_access(self, enabled: bool) -> None:
+        self.set("public_access", "true" if enabled else "false")
+
     def cookies_path(self) -> Path | None:
         value = self.get("cookies_file")
         return Path(value).expanduser() if value else None
@@ -66,11 +73,30 @@ class BotState:
     def clear_cookies_path(self) -> None:
         self.delete("cookies_file")
 
+    def has_user_language(self, user_id: int) -> bool:
+        return self.get(f"user_language:{user_id}") is not None
+
     def user_language(self, user_id: int, default: str = "fa") -> str:
         return self.get(f"user_language:{user_id}", default) or default
 
     def set_user_language(self, user_id: int, language: str) -> None:
         self.set(f"user_language:{user_id}", language)
+
+    def user_cookies_path(self, user_id: int) -> Path | None:
+        value = self.get(f"user_cookies_file:{user_id}")
+        return Path(value).expanduser() if value else None
+
+    def set_user_cookies_path(self, user_id: int, path: Path) -> None:
+        self.set(f"user_cookies_file:{user_id}", str(path))
+
+    def clear_user_cookies_path(self, user_id: int) -> None:
+        self.delete(f"user_cookies_file:{user_id}")
+
+    def save_caption(self, caption_id: str, caption: str) -> None:
+        self.set(f"caption:{caption_id}", caption)
+
+    def caption(self, caption_id: str) -> str | None:
+        return self.get(f"caption:{caption_id}")
 
     def is_force_join_enabled(self) -> bool:
         return self.get("force_join_enabled", "false") == "true"

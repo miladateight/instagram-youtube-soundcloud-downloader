@@ -29,21 +29,32 @@ class I18nTests(unittest.TestCase):
 
 
 class StateTests(unittest.TestCase):
-    def test_stores_user_language_and_force_join_settings(self) -> None:
+    def test_stores_runtime_settings(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             state = BotState(Path(directory) / "state.sqlite3")
 
             state.set_user_language(100, "de")
+            state.set_public_access(True)
+            state.set_user_cookies_path(100, Path(directory) / "cookies.txt")
+            state.save_caption("abc", "long caption")
             state.set_force_join_chat("@channel")
             state.set_force_join_enabled(True)
 
+            self.assertTrue(state.has_user_language(100))
             self.assertEqual(state.user_language(100), "de")
+            self.assertTrue(state.public_access())
+            self.assertEqual(state.user_cookies_path(100), Path(directory) / "cookies.txt")
+            self.assertEqual(state.caption("abc"), "long caption")
             self.assertEqual(state.force_join_chat(), "@channel")
             self.assertTrue(state.is_force_join_enabled())
 
+            state.set_public_access(False)
+            state.clear_user_cookies_path(100)
             state.set_force_join_enabled(False)
             state.clear_force_join_chat()
 
+            self.assertFalse(state.public_access())
+            self.assertIsNone(state.user_cookies_path(100))
             self.assertFalse(state.is_force_join_enabled())
             self.assertIsNone(state.force_join_chat())
 
