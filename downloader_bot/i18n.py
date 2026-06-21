@@ -66,6 +66,12 @@ BASE_MESSAGES = {
     "button_deactivate": "Deactivate",
     "button_status": "Status",
     "button_cookies": "Cookies help",
+    "button_download": "Download link",
+    "button_mp3": "MP3",
+    "button_my_cookies": "My cookies",
+    "button_admin_panel": "Admin panel",
+    "button_global_cookies": "Global cookies",
+    "button_clear_global_cookies": "Clear global cookies",
     "button_language": "Language",
     "button_force_join": "Forced subscription",
     "button_force_join_off": "Turn forced subscription off",
@@ -79,6 +85,14 @@ BASE_MESSAGES = {
     "personal_cookies_saved": "Your personal cookies were saved. Passwords are not stored; only this cookies file is kept on the server.",
     "personal_cookies_cleared": "Your personal cookies were removed.",
     "global_cookies_saved": "Admin global cookies were saved.",
+    "global_cookies_cleared": "Admin global cookies were removed.",
+    "download_button_hint": "Send a YouTube, Instagram, or SoundCloud link. I will detect it automatically.",
+    "global_cookie_help": (
+        "Admin global cookies are used as a fallback for every user who has not uploaded personal cookies.\n\n"
+        "To set them, send a Netscape cookies.txt file with this caption:\n"
+        "global\n\n"
+        "To remove them, use the Clear global cookies button or /clearcookies global."
+    ),
     "help": (
         "Send a YouTube, YouTube Shorts, Instagram, or SoundCloud link.\n\n"
         "Features:\n"
@@ -134,7 +148,7 @@ BASE_MESSAGES = {
     "oversized_all": "Telegram rejected this file because it is too large for the current Bot API mode.",
     "skipped_files": "Some files were not sent by Telegram:\n{files}",
     "unlimited": "Unlimited",
-    "user_status": "Your cookies: {cookies}",
+    "user_status": "Your cookies: {cookies}\nGlobal fallback cookies: {global_cookies}",
     "status": (
         "Bot name: {bot_name}\n"
         "Downloads: {active}\n"
