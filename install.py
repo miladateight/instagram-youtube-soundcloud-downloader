@@ -71,7 +71,7 @@ def create_virtualenv() -> Path:
         run(["python3", "-m", "venv", str(venv_dir)])
 
     run([str(python_bin), "-m", "pip", "install", "--upgrade", "pip", "wheel"])
-    run([str(pip_bin), "install", "-r", str(PROJECT_DIR / "requirements.txt")])
+    run([str(pip_bin), "install", "--upgrade", "-r", str(PROJECT_DIR / "requirements.txt")])
     return python_bin
 
 
@@ -90,9 +90,9 @@ def write_env(bot_name: str, bot_token: str, admin_id: str) -> None:
             f"BOT_TOKEN={env_quote(bot_token)}",
             f"ADMIN_ID={admin_id}",
             "ALLOW_ALL_USERS=false",
-            "MAX_UPLOAD_MB=49",
+            "MAX_UPLOAD_MB=0",
             "PLAYLIST_LIMIT=20",
-            "CONCURRENT_DOWNLOADS=1",
+            "CONCURRENT_DOWNLOADS=100",
             f"DOWNLOAD_DIR={env_quote(str(download_dir))}",
             f"DATA_DIR={env_quote(str(data_dir))}",
             f"LOG_DIR={env_quote(str(log_dir))}",
@@ -139,10 +139,31 @@ def install_service(python_bin: Path) -> None:
     run(sudo_command(["systemctl", "restart", SERVICE_NAME]))
 
 
+def update_existing_installation() -> None:
+    print("Existing .env found. Running update mode.")
+    print("Use python3 install.py --reconfigure if you want to enter a new token/admin.")
+    print()
+
+    install_system_packages()
+    if (PROJECT_DIR / ".git").exists():
+        run(["git", "pull", "--ff-only"], check=False)
+    python_bin = create_virtualenv()
+    install_service(python_bin)
+
+    print()
+    print("Update complete.")
+    print(f"Status: sudo systemctl status {SERVICE_NAME}")
+    print(f"Logs:   sudo journalctl -u {SERVICE_NAME} -f")
+
+
 def main() -> None:
     print("Telegram Downloader installer")
     print("The bot will stay inactive until the admin sends /activate in Telegram.")
     print()
+
+    if (PROJECT_DIR / ".env").exists() and "--reconfigure" not in sys.argv:
+        update_existing_installation()
+        return
 
     bot_name = prompt("Bot name", default="DownloaderBot")
     bot_token = prompt("Bot token")

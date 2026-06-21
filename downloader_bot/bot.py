@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 import secrets
+import time
 from contextlib import suppress
 from pathlib import Path
 
@@ -38,7 +40,9 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
     dp = Dispatcher()
     state = BotState(settings.data_dir / "bot_state.sqlite3")
     downloader = Downloader(settings)
-    semaphore = asyncio.Semaphore(settings.concurrent_downloads)
+    user_locks: dict[int, asyncio.Lock] = {}
+    last_download_started: dict[int, float] = {}
+    user_cooldown_seconds = 5
 
     def message_user_id(message: Message) -> int:
         return message.from_user.id if message.from_user else 0
@@ -171,10 +175,21 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
             public_access=status_label(language, public_access_enabled()),
             force_join=status_label(language, state.is_force_join_enabled()),
             force_join_channel=force_join_chat,
-            max_upload_mb=settings.max_upload_mb,
+            upload_limit=t(language, "unlimited")
+            if settings.max_upload_mb <= 0
+            else f"{settings.max_upload_mb}MB",
             playlist_limit=settings.playlist_limit,
             concurrent_downloads=settings.concurrent_downloads,
             cookies=t(language, "cookies_set") if cookies else t(language, "cookies_not_set"),
+        )
+
+    def user_status_text(message: Message, language: str) -> str:
+        user_cookies = state.user_cookies_path(message_user_id(message))
+        cookies_ok = bool(user_cookies and user_cookies.exists())
+        return t(
+            language,
+            "user_status",
+            cookies=t(language, "cookies_set") if cookies_ok else t(language, "cookies_not_set"),
         )
 
     def force_join_status_text(language: str) -> str:
@@ -208,14 +223,68 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
             return t(language, "login_error")
         if any(token in lowered for token in ("private", "not available", "unavailable")):
             return t(language, "private_error")
-        if any(token in lowered for token in ("larger than max-filesize", "file is larger")):
-            return t(language, "size_error", limit=settings.max_upload_mb)
+        if any(
+            token in lowered
+            for token in (
+                "larger than max-filesize",
+                "file is larger",
+                "file is too big",
+                "too large",
+                "request entity too large",
+            )
+        ):
+            return t(language, "telegram_size_error")
         if "ffmpeg" in lowered:
             return t(language, "ffmpeg_error")
         if "unsupported url" in lowered:
             return t(language, "unsupported_error")
 
         return raw[:900] if raw else t(language, "unknown_error")
+
+    def progress_bar(percent: int) -> str:
+        filled = max(0, min(10, percent // 10))
+        return ("#" * filled) + ("-" * (10 - filled))
+
+    async def edit_status(message: Message, text: str) -> None:
+        with suppress(Exception):
+            await message.edit_text(text)
+
+    async def animate_progress(
+        status_message: Message,
+        language: str,
+        platform: str,
+        url: str,
+        finished: asyncio.Event,
+    ) -> None:
+        percent = 0
+        while not finished.is_set():
+            await edit_status(
+                status_message,
+                t(
+                    language,
+                    "progress",
+                    percent=percent,
+                    bar=progress_bar(percent),
+                    platform=platform,
+                    url=url,
+                ),
+            )
+            if percent < 90:
+                percent = min(90, percent + 10)
+                await asyncio.sleep(1.2)
+            else:
+                await asyncio.sleep(3)
+        await edit_status(
+            status_message,
+            t(
+                language,
+                "progress",
+                percent=100,
+                bar=progress_bar(100),
+                platform=platform,
+                url=url,
+            ),
+        )
 
     async def is_subscribed(bot: Bot, user_id: int) -> bool | None:
         if not state.is_force_join_enabled():
@@ -443,7 +512,10 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
         if not is_allowed(message):
             await message.answer(t(language, "private_bot"), reply_markup=language_keyboard())
             return
-        await message.answer(status_text(language), reply_markup=admin_keyboard(language) if is_admin(message) else None)
+        if is_admin(message):
+            await message.answer(status_text(language), reply_markup=admin_keyboard(language))
+        else:
+            await message.answer(user_status_text(message, language))
 
     @dp.callback_query(F.data == "check_sub")
     async def check_subscription_callback(callback: CallbackQuery, bot: Bot) -> None:
@@ -557,6 +629,91 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
                 await callback.message.answer(caption[start : start + 3900])
         await callback.answer()
 
+    async def process_downloads(
+        message: Message,
+        bot: Bot,
+        urls: list[str],
+        *,
+        audio_only: bool = False,
+    ) -> None:
+        language = message_language(message)
+        if await reject_if_needed(message, bot):
+            return
+
+        user_id = message_user_id(message)
+        now = time.monotonic()
+        remaining = math.ceil((last_download_started.get(user_id, 0) + user_cooldown_seconds) - now)
+        lock = user_locks.setdefault(user_id, asyncio.Lock())
+        if lock.locked():
+            await message.answer(t(language, "download_already_running"))
+            return
+        if remaining > 0:
+            await message.answer(t(language, "download_cooldown", seconds=remaining))
+            return
+        last_download_started[user_id] = now
+
+        async with lock:
+            if len(urls) > 1:
+                await message.answer(t(language, "multiple_links", count=len(urls)))
+
+            sender = TelegramSender(bot, settings, state)
+            for url in urls:
+                platform = detect_platform(url)
+                platform_name = platform_label(platform)
+                url_label = short_url_label(url)
+                status_message = await message.answer(
+                    t(
+                        language,
+                        "preparing_audio" if audio_only else "preparing",
+                        platform=platform_name,
+                        url=url_label,
+                    )
+                )
+                result = None
+                finished = asyncio.Event()
+                progress_task = asyncio.create_task(
+                    animate_progress(status_message, language, platform_name, url_label, finished)
+                )
+                try:
+                    await bot.send_chat_action(message.chat.id, ChatAction.UPLOAD_DOCUMENT)
+                    cookies_path = active_cookies_path(user_id)
+                    result = await downloader.download(url, cookies_path, audio_only=audio_only)
+                    finished.set()
+                    await progress_task
+                    await status_message.edit_text(t(language, "uploading"))
+                    await sender.send_result(
+                        message.chat.id,
+                        result,
+                        language,
+                        secrets.token_urlsafe(8),
+                    )
+                    with suppress(Exception):
+                        await status_message.delete()
+                except Exception as exc:
+                    finished.set()
+                    with suppress(Exception):
+                        await progress_task
+                    logging.exception("Download failed for %s", url)
+                    await status_message.edit_text(
+                        t(language, "download_failed", error=friendly_error(exc, language))
+                    )
+                finally:
+                    if result is not None:
+                        Downloader.cleanup(result.workdir)
+
+    @dp.message(Command("mp3", "audio"))
+    async def mp3_command(message: Message, bot: Bot) -> None:
+        language = message_language(message)
+        urls = extract_urls(message.text or "")
+        if not urls:
+            await message.answer(t(language, "mp3_help"))
+            return
+        urls = [url for url in urls if detect_platform(url)]
+        if not urls:
+            await message.answer(t(language, "unsupported_links"))
+            return
+        await process_downloads(message, bot, urls, audio_only=True)
+
     @dp.message(F.text)
     async def handle_text(message: Message, bot: Bot) -> None:
         language = message_language(message)
@@ -575,51 +732,7 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
             if not urls:
                 return
 
-        if len(urls) > 1:
-            await message.answer(t(language, "multiple_links", count=len(urls)))
-
-        sender = TelegramSender(bot, settings, state)
-        for url in urls:
-            platform = detect_platform(url)
-            status_message = await message.answer(
-                t(
-                    language,
-                    "preparing",
-                    platform=platform_label(platform),
-                    url=short_url_label(url),
-                )
-            )
-            result = None
-            try:
-                async with semaphore:
-                    await bot.send_chat_action(message.chat.id, ChatAction.UPLOAD_DOCUMENT)
-                    cookies_path = active_cookies_path(message_user_id(message))
-                    await status_message.edit_text(
-                        t(
-                            language,
-                            "downloading",
-                            platform=platform_label(platform),
-                            url=short_url_label(url),
-                        )
-                    )
-                    result = await downloader.download(url, cookies_path)
-                    await status_message.edit_text(t(language, "uploading"))
-                    await sender.send_result(
-                        message.chat.id,
-                        result,
-                        language,
-                        secrets.token_urlsafe(8),
-                    )
-                    with suppress(Exception):
-                        await status_message.delete()
-            except Exception as exc:
-                logging.exception("Download failed for %s", url)
-                await status_message.edit_text(
-                    t(language, "download_failed", error=friendly_error(exc, language))
-                )
-            finally:
-                if result is not None:
-                    Downloader.cleanup(result.workdir)
+        await process_downloads(message, bot, urls)
 
     return dp
 

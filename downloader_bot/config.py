@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -37,6 +38,8 @@ class Settings:
 
     @property
     def max_upload_bytes(self) -> int:
+        if self.max_upload_mb <= 0:
+            return sys.maxsize
         return self.max_upload_mb * 1024 * 1024
 
 
@@ -59,7 +62,7 @@ def load_settings() -> Settings:
         bot_token=bot_token,
         admin_id=admin_id,
         allow_all_users=_bool_env("ALLOW_ALL_USERS", False),
-        max_upload_mb=_int_env("MAX_UPLOAD_MB", 49),
+        max_upload_mb=_int_env("MAX_UPLOAD_MB", 0),
         playlist_limit=max(1, _int_env("PLAYLIST_LIMIT", 20)),
         concurrent_downloads=max(1, _int_env("CONCURRENT_DOWNLOADS", 1)),
         download_dir=Path(os.getenv("DOWNLOAD_DIR", "downloads")).expanduser(),

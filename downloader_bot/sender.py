@@ -13,7 +13,7 @@ from .config import Settings
 from .downloader import DownloadResult
 from .i18n import t
 from .state import BotState
-from .utils import file_kind, human_size, truncate_caption
+from .utils import file_kind, truncate_caption
 
 
 class TelegramSender:
@@ -29,13 +29,12 @@ class TelegramSender:
         language: str = "fa",
         caption_id: str | None = None,
     ) -> None:
-        valid_files = [item for item in result.files if item.size <= self.settings.max_upload_bytes]
-        skipped = [item for item in result.files if item.size > self.settings.max_upload_bytes]
+        valid_files = list(result.files)
 
         if not valid_files:
             await self.bot.send_message(
                 chat_id,
-                t(language, "oversized_all", limit=self.settings.max_upload_mb),
+                t(language, "no_files_to_send"),
             )
             return
 
@@ -53,15 +52,6 @@ class TelegramSender:
                 )
         else:
             await self._send_one_by_one(chat_id, valid_files, kinds, caption, caption_markup, result)
-
-        if skipped:
-            skipped_text = "\n".join(
-                f"- {item.path.name} ({human_size(item.size)})" for item in skipped[:10]
-            )
-            await self.bot.send_message(
-                chat_id,
-                t(language, "skipped_files", files=skipped_text),
-            )
 
     async def _send_media_groups(self, chat_id: int, files, kinds, caption: str | None) -> None:
         for chunk_start in range(0, len(files), 10):

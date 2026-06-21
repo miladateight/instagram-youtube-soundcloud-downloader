@@ -33,15 +33,31 @@ class Downloader:
         self.settings = settings
         self.settings.download_dir.mkdir(parents=True, exist_ok=True)
 
-    async def download(self, url: str, cookies_file: Path | None = None) -> DownloadResult:
+    async def download(
+        self,
+        url: str,
+        cookies_file: Path | None = None,
+        *,
+        audio_only: bool = False,
+    ) -> DownloadResult:
         import asyncio
 
-        return await asyncio.to_thread(self._download_sync, url, cookies_file)
+        return await asyncio.to_thread(self._download_sync, url, cookies_file, audio_only)
 
-    def _download_sync(self, url: str, cookies_file: Path | None = None) -> DownloadResult:
+    def _download_sync(
+        self,
+        url: str,
+        cookies_file: Path | None = None,
+        audio_only: bool = False,
+    ) -> DownloadResult:
         workdir = Path(tempfile.mkdtemp(prefix="job-", dir=self.settings.download_dir))
         try:
-            options = self._build_options(workdir, cookies_file, self._should_write_thumbnail(url))
+            options = self._build_options(
+                workdir,
+                cookies_file,
+                self._should_write_thumbnail(url) and not audio_only,
+                audio_only=audio_only,
+            )
             with YoutubeDL(options) as ydl:
                 info = ydl.extract_info(url, download=True)
 
@@ -69,6 +85,7 @@ class Downloader:
         workdir: Path,
         cookies_file: Path | None,
         write_thumbnail: bool = False,
+        audio_only: bool = False,
     ) -> dict[str, Any]:
         options: dict[str, Any] = {
             "paths": {"home": str(workdir)},
@@ -76,12 +93,18 @@ class Downloader:
                 "default": "%(title).120B.%(ext)s",
                 "thumbnail": "%(title).120B.%(ext)s",
             },
-            "format": "bv*+ba/best",
+            "format": "bestaudio/best"
+            if audio_only
+            else (
+                "bv*[ext=mp4][vcodec^=avc1]+ba[ext=m4a]/"
+                "b[ext=mp4][vcodec^=avc1]/"
+                "bv*[ext=mp4]+ba[ext=m4a]/"
+                "best[ext=mp4]/best"
+            ),
             "merge_output_format": "mp4",
             "writethumbnail": write_thumbnail,
             "noplaylist": False,
             "playlistend": self.settings.playlist_limit,
-            "max_filesize": self.settings.max_upload_bytes,
             "ignoreerrors": False,
             "windowsfilenames": True,
             "quiet": True,
@@ -90,6 +113,14 @@ class Downloader:
             "fragment_retries": 3,
             "concurrent_fragment_downloads": 4,
         }
+        if audio_only:
+            options["postprocessors"] = [
+                {
+                    "key": "FFmpegExtractAudio",
+                    "preferredcodec": "mp3",
+                    "preferredquality": "192",
+                }
+            ]
 
         if cookies_file and cookies_file.exists():
             options["cookiefile"] = str(cookies_file)

@@ -16,6 +16,10 @@ The project is written completely in Python and includes a simple Ubuntu install
 - Instagram multi-item posts sent as Telegram albums/media groups
 - Captions added to the first uploaded file
 - Long captions are shortened safely with a "Get full caption" button
+- Per-user anti-spam guard: one active download and one new request every 5 seconds
+- Fake progress message from 0% to 90%, then 100% when the download finishes
+- `/mp3 <link>` for audio-only MP3 downloads
+- YouTube video downloads prefer Telegram-friendly MP4 instead of WebM
 - SoundCloud cover art is sent before the audio when available
 - Four-language bot UI: Persian, English, Arabic, and German
 - One-time user language selection, with manual changes through `/language`
@@ -31,14 +35,14 @@ The project is written completely in Python and includes a simple Ubuntu install
 ## Quick Install On Ubuntu
 
 ```bash
-bash -c 'set -e; repo=instagram-youtube-soundcloud-downloader; if [ -f install.py ] && [ -d .git ]; then python3 install.py; elif [ -d "$repo/.git" ]; then cd "$repo" && python3 update.py; elif [ -e "$repo" ]; then echo "$repo already exists but is not a git checkout. Remove it first or choose another directory."; exit 1; else git clone https://github.com/miladateight/instagram-youtube-soundcloud-downloader.git "$repo" && cd "$repo" && python3 install.py; fi'
+bash -c 'set -e; repo=instagram-youtube-soundcloud-downloader; if [ -f install.py ] && [ -d .git ]; then python3 install.py; elif [ -d "$repo/.git" ]; then cd "$repo" && python3 install.py; elif [ -e "$repo" ]; then echo "$repo already exists but is not a git checkout. Remove it first or choose another directory."; exit 1; else git clone https://github.com/miladateight/instagram-youtube-soundcloud-downloader.git "$repo" && cd "$repo" && python3 install.py; fi'
 ```
 
-If the repository already exists on the server, update it instead of cloning inside itself:
+`python3 install.py` is also the update command. If `.env` already exists, it updates dependencies, pulls the latest code when possible, and restarts the service:
 
 ```bash
 cd instagram-youtube-soundcloud-downloader
-python3 update.py
+python3 install.py
 ```
 
 The installer asks for:
@@ -61,7 +65,8 @@ The bot will not download anything until it is activated.
 - `/language` or `/lang` changes the user language
 - `/help` shows the help text
 - `/id` shows the user's numeric Telegram ID
-- `/status` shows bot status
+- `/mp3 <link>` sends audio only as MP3
+- `/status` shows personal cookies status for users and full status for the admin
 - `/admin` opens the admin panel
 - `/activate` enables downloads
 - `/deactivate` disables downloads
@@ -101,7 +106,7 @@ sudo systemctl restart telegram-downloader.service
 Update the installed bot:
 
 ```bash
-python3 update.py
+python3 install.py
 ```
 
 Uninstall only the systemd service:
@@ -174,9 +179,9 @@ BOT_NAME=DownloaderBot
 BOT_TOKEN=123456789:replace-me
 ADMIN_ID=123456789
 ALLOW_ALL_USERS=false
-MAX_UPLOAD_MB=49
+MAX_UPLOAD_MB=0
 PLAYLIST_LIMIT=20
-CONCURRENT_DOWNLOADS=1
+CONCURRENT_DOWNLOADS=100
 DOWNLOAD_DIR=downloads
 DATA_DIR=data
 LOG_DIR=logs
@@ -187,7 +192,7 @@ COOKIES_FILE=
 
 `PLAYLIST_LIMIT` protects the server from very large profile or playlist downloads.
 
-`MAX_UPLOAD_MB` should match your Telegram Bot API upload capability.
+`MAX_UPLOAD_MB=0` means the app does not block files by size. Telegram Bot API can still reject files above its real upload limit.
 
 ## Example Links
 
@@ -208,5 +213,5 @@ Instagram, YouTube, and SoundCloud may change their pages or restrictions. Keep 
 
 ```bash
 cd instagram-youtube-soundcloud-downloader
-python3 update.py
+python3 install.py
 ```

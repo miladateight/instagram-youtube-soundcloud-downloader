@@ -35,9 +35,13 @@ BASE_MESSAGES = {
     "unsupported_links": "Some links are not supported. YouTube, Instagram, and SoundCloud are enabled for now.",
     "multiple_links": "{count} links found. I will download them one by one.",
     "preparing": "Preparing {platform}:\n{url}",
+    "preparing_audio": "Preparing MP3 from {platform}:\n{url}",
     "downloading": "Downloading from {platform}...\n{url}",
+    "progress": "Downloading {platform}\n{bar} {percent}%\n{url}",
     "uploading": "Download finished. Uploading now...",
     "download_failed": "Download failed.\n{error}",
+    "download_already_running": "Your previous download is still running. Please wait for it to finish.",
+    "download_cooldown": "Please wait {seconds} seconds before sending another download.",
     "your_id": "Your numeric ID: {id}",
     "only_admin_access": "Only the admin has access.",
     "cookie_upload_hint": "If this is a cookies file, send it as cookies.txt or with /cookies in the caption.",
@@ -83,11 +87,12 @@ BASE_MESSAGES = {
         "- YouTube videos and Shorts\n"
         "- SoundCloud tracks with cover art when available\n\n"
         "Commands:\n"
+        "/mp3 <link> - download audio only as MP3\n"
         "/language - choose language\n"
         "/cookies - cookies.txt upload guide\n"
         "/clearcookies - remove your cookies\n"
         "/id - show your numeric ID\n"
-        "/status - bot status\n"
+        "/status - your cookies status\n"
         "/help - help"
     ),
     "admin_help": (
@@ -104,6 +109,7 @@ BASE_MESSAGES = {
         "/forcejoin_off - disable forced subscription\n"
         "/status - full status"
     ),
+    "mp3_help": "Send a link like this:\n/mp3 https://youtube.com/watch?v=...",
     "cookie_help": (
         "For links where Instagram or YouTube requires login, each user can upload a personal cookies.txt file.\n\n"
         "How it works:\n"
@@ -119,19 +125,23 @@ BASE_MESSAGES = {
     ),
     "login_error": "This link probably requires login or cookies.\nUse /cookies to see the cookies.txt upload guide. Passwords are not stored.",
     "private_error": "This content is private, removed, or unavailable.",
-    "size_error": "The file is larger than the current upload limit. Current limit: {limit}MB",
+    "telegram_size_error": "Telegram rejected this file because it is too large for the current Bot API mode.",
+    "size_error": "Telegram rejected this file because it is too large for the current Bot API mode.",
     "ffmpeg_error": "ffmpeg is not installed correctly. Check the service logs.",
     "unsupported_error": "This link is not supported. YouTube, Instagram, and SoundCloud are enabled for now.",
     "unknown_error": "An unknown error occurred.",
-    "oversized_all": "The file was downloaded, but it is larger than the current upload limit. Current limit: {limit}MB",
-    "skipped_files": "Some files were not sent because they are too large:\n{files}",
+    "no_files_to_send": "The download finished, but no sendable file was produced.",
+    "oversized_all": "Telegram rejected this file because it is too large for the current Bot API mode.",
+    "skipped_files": "Some files were not sent by Telegram:\n{files}",
+    "unlimited": "Unlimited",
+    "user_status": "Your cookies: {cookies}",
     "status": (
         "Bot name: {bot_name}\n"
         "Downloads: {active}\n"
         "Public access: {public_access}\n"
         "Forced subscription: {force_join}\n"
         "Subscription channel: {force_join_channel}\n"
-        "Upload limit: {max_upload_mb}MB\n"
+        "Upload limit: {upload_limit}\n"
         "Playlist/profile limit: {playlist_limit} items\n"
         "Concurrent downloads: {concurrent_downloads}\n"
         "Cookies: {cookies}"
@@ -224,7 +234,7 @@ MESSAGES: dict[str, dict[str, str]] = {
         "skipped_files": "چند فایل به خاطر حجم بالا ارسال نشدند:\n{files}",
         "status": (
             "نام بات: {bot_name}\nوضعیت دانلود: {active}\nدسترسی عمومی: {public_access}\n"
-            "عضویت اجباری: {force_join}\nکانال عضویت: {force_join_channel}\nحد ارسال: {max_upload_mb}MB\n"
+            "عضویت اجباری: {force_join}\nکانال عضویت: {force_join_channel}\nحد ارسال: {upload_limit}\n"
             "حد playlist/profile: {playlist_limit} آیتم\nدانلود همزمان: {concurrent_downloads}\ncookies: {cookies}"
         ),
         "cookies_set": "تنظیم شده",
