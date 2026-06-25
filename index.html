@@ -1,0 +1,1280 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#050816" />
+    <meta
+      name="description"
+      content="Telegram Downloader is a private bot by Milad Ateight for downloading YouTube, Instagram, and SoundCloud media inside Telegram."
+    />
+    <link rel="icon" type="image/png" href="./at8-logo.png" />
+    <link rel="apple-touch-icon" href="./at8-logo.png" />
+    <title>Telegram Downloader | AT8</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #050816;
+        --panel: rgba(12, 19, 36, 0.72);
+        --panel-strong: rgba(14, 23, 42, 0.9);
+        --line: rgba(125, 211, 252, 0.2);
+        --line-strong: rgba(125, 211, 252, 0.42);
+        --text: #f8fafc;
+        --soft: rgba(226, 232, 240, 0.82);
+        --muted: rgba(203, 213, 225, 0.66);
+        --cyan: #22d3ee;
+        --green: #34d399;
+        --gold: #facc15;
+        --red: #f43f5e;
+        --brand-gold: #f5c400;
+        --brand-red: #ef1111;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        min-width: 320px;
+        min-height: 100vh;
+        overflow-x: hidden;
+        background:
+          radial-gradient(circle at 18% 12%, rgba(34, 211, 238, 0.14), transparent 29%),
+          radial-gradient(circle at 82% 6%, rgba(52, 211, 153, 0.12), transparent 30%),
+          radial-gradient(circle at 60% 84%, rgba(250, 204, 21, 0.09), transparent 34%),
+          linear-gradient(145deg, #040615 0%, #07111f 46%, #050816 100%);
+        color: var(--text);
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin-top: 0;
+      }
+
+      .page {
+        position: relative;
+        isolation: isolate;
+      }
+
+      .grid-field {
+        position: fixed;
+        inset: 0;
+        z-index: -2;
+        pointer-events: none;
+        background:
+          linear-gradient(90deg, rgba(125, 211, 252, 0.055) 1px, transparent 1px),
+          linear-gradient(rgba(125, 211, 252, 0.04) 1px, transparent 1px),
+          linear-gradient(180deg, transparent 0, rgba(5, 8, 22, 0.94) 88%);
+        background-size: 74px 74px, 74px 74px, auto;
+        animation: gridDrift 20s ease-in-out infinite alternate;
+      }
+
+      .topbar {
+        position: fixed;
+        top: 16px;
+        left: clamp(14px, 3vw, 34px);
+        right: clamp(14px, 3vw, 34px);
+        z-index: 20;
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: center;
+        gap: 18px;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: rgba(2, 8, 18, 0.76);
+        box-shadow: 0 22px 72px rgba(0, 0, 0, 0.34), 0 0 46px rgba(56, 189, 248, 0.08);
+        backdrop-filter: blur(20px);
+        direction: ltr;
+      }
+
+      .brand,
+      .nav,
+      .actions,
+      .pill,
+      .metric,
+      .check,
+      .download-row {
+        display: flex;
+        align-items: center;
+      }
+
+      .brand {
+        gap: 10px;
+        font-weight: 800;
+        justify-self: start;
+        min-width: 0;
+      }
+
+      .brand-mark {
+        display: grid;
+        place-items: center;
+        width: 46px;
+        height: 46px;
+        aspect-ratio: 1;
+        padding: 4px;
+        border-radius: 50%;
+        background:
+          radial-gradient(circle at 40% 28%, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.74) 58%, rgba(245, 196, 0, 0.2)),
+          rgba(255, 255, 255, 0.9);
+        box-shadow: 0 0 34px rgba(245, 196, 0, 0.22), 0 0 44px rgba(239, 17, 17, 0.08);
+        overflow: hidden;
+      }
+
+      .brand-mark img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.24));
+      }
+
+      .brand-text {
+        display: grid;
+        gap: 0;
+        line-height: 1.08;
+      }
+
+      .brand-text strong {
+        font-size: 1rem;
+      }
+
+      .brand-text small {
+        color: var(--brand-gold);
+        font-family: "Cascadia Code", Consolas, monospace;
+        font-size: 0.72rem;
+        font-weight: 800;
+      }
+
+      .brand small {
+        display: block;
+        color: var(--muted);
+        font-weight: 700;
+      }
+
+      .nav {
+        gap: 8px;
+        justify-content: center;
+      }
+
+      .header-tools {
+        display: contents;
+      }
+
+      .nav,
+      .lang-switch {
+        display: flex;
+        align-items: center;
+      }
+
+      .nav a {
+        min-height: 38px;
+        padding: 0 13px;
+        border-radius: 999px;
+        color: var(--soft);
+        transition: background 180ms ease, color 180ms ease;
+      }
+
+      .nav a:hover {
+        color: white;
+        background: rgba(34, 211, 238, 0.12);
+      }
+
+      .lang-switch {
+        gap: 4px;
+        min-width: 0;
+        padding: 4px;
+        border: 1px solid rgba(125, 211, 252, 0.16);
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.74);
+        direction: ltr;
+      }
+
+      .lang-switch button {
+        min-height: 34px;
+        padding: 0 10px;
+        border: 0;
+        border-radius: 999px;
+        color: var(--soft);
+        background: transparent;
+        cursor: pointer;
+        text-align: center;
+      }
+
+      .lang-switch button.active,
+      .lang-switch button:hover {
+        color: white;
+        background: rgba(56, 189, 248, 0.12);
+      }
+
+      .lang-switch button.active {
+        box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.34);
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 0.94fr) minmax(380px, 0.78fr);
+        align-items: center;
+        gap: clamp(34px, 5vw, 80px);
+        min-height: 100svh;
+        padding: 132px clamp(20px, 5vw, 82px) 78px;
+        overflow-x: clip;
+      }
+
+      .eyebrow {
+        gap: 9px;
+        margin-bottom: 18px;
+        color: var(--cyan);
+        font-size: 0.88rem;
+        font-weight: 900;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        max-width: 820px;
+        margin-bottom: 24px;
+        font-size: clamp(2.55rem, 6.4vw, 6.9rem);
+        line-height: 0.95;
+        letter-spacing: 0;
+        overflow-wrap: break-word;
+      }
+
+      .hero-lead {
+        max-width: 760px;
+        color: var(--soft);
+        font-size: clamp(1.06rem, 1.35vw, 1.26rem);
+        line-height: 1.85;
+        overflow-wrap: break-word;
+      }
+
+      .actions {
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 28px;
+      }
+
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 9px;
+        min-height: 50px;
+        padding: 0 18px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.68);
+        transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+      }
+
+      .button:hover {
+        transform: translateY(-2px);
+        border-color: var(--line-strong);
+      }
+
+      .button.primary {
+        border-color: rgba(52, 211, 153, 0.38);
+        color: #03110d;
+        background: linear-gradient(135deg, #ecfeff, var(--green) 58%, var(--cyan));
+        box-shadow: 0 22px 70px rgba(52, 211, 153, 0.18);
+        font-weight: 900;
+      }
+
+      .hero-stage {
+        position: relative;
+        min-height: clamp(500px, 58vw, 720px);
+        perspective: 1300px;
+        transform-style: preserve-3d;
+      }
+
+      .diagnostic-core {
+        position: absolute;
+        inset: 9%;
+        display: grid;
+        place-items: center;
+        transform-style: preserve-3d;
+      }
+
+      .device {
+        position: relative;
+        z-index: 5;
+        display: grid;
+        align-content: start;
+        gap: 14px;
+        width: min(420px, 78vw);
+        min-height: 300px;
+        padding: 22px;
+        border: 1px solid rgba(125, 211, 252, 0.3);
+        border-radius: 8px;
+        background:
+          linear-gradient(145deg, rgba(34, 211, 238, 0.18), rgba(255, 255, 255, 0.035) 44%, rgba(52, 211, 153, 0.12)),
+          var(--panel-strong);
+        box-shadow: 0 34px 100px rgba(0, 0, 0, 0.42), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+        transform: rotateX(10deg) rotateY(-14deg) translateZ(58px);
+        animation: deviceFloat 8s cubic-bezier(0.42, 0, 0.2, 1) infinite;
+      }
+
+      .device-top {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        color: var(--muted);
+        font-family: "Cascadia Code", Consolas, monospace;
+        font-size: 0.82rem;
+      }
+
+      .terminal-line {
+        display: grid;
+        gap: 7px;
+        padding: 13px;
+        border: 1px solid rgba(125, 211, 252, 0.16);
+        border-radius: 8px;
+        background: rgba(2, 6, 23, 0.54);
+      }
+
+      .terminal-line strong {
+        color: #dcfce7;
+      }
+
+      .terminal-line span {
+        color: var(--muted);
+        font-family: "Cascadia Code", Consolas, monospace;
+        font-size: 0.82rem;
+      }
+
+      .orbit {
+        position: absolute;
+        inset: 8%;
+        border: 1px solid rgba(34, 211, 238, 0.3);
+        border-radius: 50%;
+        transform-style: preserve-3d;
+        animation: orbitSpin 14s linear infinite;
+      }
+
+      .orbit:nth-child(2) {
+        inset: 15%;
+        border-color: rgba(52, 211, 153, 0.32);
+        transform: rotateX(70deg);
+        animation-duration: 11s;
+        animation-direction: reverse;
+      }
+
+      .orbit:nth-child(3) {
+        inset: 2%;
+        border-color: rgba(250, 204, 21, 0.24);
+        transform: rotateY(72deg) rotateZ(18deg);
+        animation-duration: 18s;
+      }
+
+      .floating-chip {
+        position: absolute;
+        z-index: 8;
+        display: inline-flex;
+        align-items: center;
+        min-height: 42px;
+        padding: 0 13px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        color: var(--soft);
+        background: rgba(8, 15, 30, 0.8);
+        box-shadow: 0 18px 52px rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(16px);
+        animation: panelFloat 7s ease-in-out infinite;
+      }
+
+      .chip-1 {
+        top: 18%;
+        left: 0;
+      }
+
+      .chip-2 {
+        top: 20%;
+        right: 0;
+        animation-delay: -2s;
+      }
+
+      .chip-3 {
+        left: 5%;
+        bottom: 20%;
+        animation-delay: -3.6s;
+      }
+
+      .chip-4 {
+        right: 4%;
+        bottom: 18%;
+        animation-delay: -4.8s;
+      }
+
+      .section {
+        padding: 84px clamp(20px, 5vw, 82px);
+        background: linear-gradient(180deg, rgba(5, 8, 22, 0.96), rgba(5, 8, 22, 0.985));
+      }
+
+      .section-heading {
+        max-width: 840px;
+        margin-bottom: 30px;
+      }
+
+      h2 {
+        margin-bottom: 14px;
+        font-size: clamp(2.15rem, 4.8vw, 5.2rem);
+        line-height: 1;
+        letter-spacing: 0;
+      }
+
+      .section-heading p {
+        color: var(--soft);
+        font-size: 1.08rem;
+        line-height: 1.8;
+      }
+
+      .feature-grid,
+      .flow-grid,
+      .download-panel {
+        display: grid;
+        gap: 14px;
+      }
+
+      .feature-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .feature-card,
+      .flow-card,
+      .download-card {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: linear-gradient(145deg, rgba(34, 211, 238, 0.1), rgba(255, 255, 255, 0.025) 48%, rgba(52, 211, 153, 0.08)), var(--panel);
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.25);
+      }
+
+      .feature-card {
+        min-height: 225px;
+        padding: 22px;
+      }
+
+      .feature-card span,
+      .flow-card span,
+      .download-meta {
+        color: var(--gold);
+        font-family: "Cascadia Code", Consolas, monospace;
+        font-size: 0.8rem;
+        font-weight: 800;
+      }
+
+      .feature-card h3,
+      .flow-card h3 {
+        margin-bottom: 12px;
+        font-size: 1.35rem;
+      }
+
+      .feature-card p,
+      .flow-card p,
+      .download-card p {
+        color: var(--muted);
+        line-height: 1.74;
+      }
+
+      .flow-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .flow-card {
+        min-height: 250px;
+        padding: 22px;
+      }
+
+      .download-panel {
+        grid-template-columns: minmax(0, 0.82fr) minmax(300px, 0.42fr);
+        align-items: stretch;
+      }
+
+      .download-card {
+        padding: 26px;
+      }
+
+      .download-row {
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 22px;
+      }
+
+      .metric-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .metric {
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px;
+        border: 1px solid rgba(125, 211, 252, 0.14);
+        border-radius: 8px;
+        background: rgba(15, 23, 42, 0.5);
+      }
+
+      .metric small {
+        color: var(--muted);
+      }
+
+      .check {
+        gap: 8px;
+        color: #dcfce7;
+      }
+
+      .footer {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 24px clamp(20px, 5vw, 82px) 42px;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        background: rgba(5, 8, 22, 0.99);
+      }
+
+      .footer-projects {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 14px;
+      }
+
+      .footer-projects a:hover {
+        color: var(--text);
+      }
+
+      .rtl .hero > div:first-child,
+      .rtl .section-heading,
+      .rtl .feature-card,
+      .rtl .flow-card,
+      .rtl .download-card {
+        direction: rtl;
+        text-align: right;
+      }
+
+      .rtl .actions,
+      .rtl .download-row {
+        justify-content: flex-start;
+      }
+
+      .rtl .hero {
+        direction: ltr;
+      }
+
+      @keyframes gridDrift {
+        from {
+          background-position: 0 0, 0 0, center;
+        }
+
+        to {
+          background-position: 34px 22px, -28px 18px, center;
+        }
+      }
+
+      @keyframes orbitSpin {
+        from {
+          rotate: 0deg;
+        }
+
+        to {
+          rotate: 360deg;
+        }
+      }
+
+      @keyframes deviceFloat {
+        0%,
+        100% {
+          transform: rotateX(10deg) rotateY(-14deg) translate3d(0, 0, 58px);
+        }
+
+        50% {
+          transform: rotateX(13deg) rotateY(10deg) translate3d(0, -14px, 76px);
+        }
+      }
+
+      @keyframes panelFloat {
+        0%,
+        100% {
+          transform: translate3d(0, 0, 32px);
+        }
+
+        50% {
+          transform: translate3d(0, -9px, 54px);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+
+      @media (max-width: 1080px) {
+        .hero,
+        .download-panel {
+          grid-template-columns: 1fr;
+        }
+
+        .feature-grid,
+        .flow-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .nav {
+          display: none;
+        }
+
+        .lang-switch {
+          justify-self: end;
+        }
+      }
+
+      @media (max-width: 680px) {
+        .topbar {
+          position: absolute;
+          inset-inline: 14px;
+          width: auto;
+          grid-template-columns: 1fr;
+          align-items: stretch;
+          overflow: hidden;
+          border-radius: 18px;
+        }
+
+        .lang-switch {
+          width: calc(100% - 28px);
+        }
+
+        .brand {
+          justify-content: flex-start;
+        }
+
+        .lang-switch {
+          display: flex;
+          flex-wrap: wrap;
+          justify-self: start;
+          direction: ltr;
+          overflow: hidden;
+        }
+
+        .lang-switch button {
+          flex: 1 1 calc(50% - 4px);
+          max-width: calc(50% - 2px);
+          min-width: 0;
+          padding-inline: 4px;
+          overflow: hidden;
+          font-size: 0.72rem;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .hero {
+          padding-top: 224px;
+        }
+
+        .hero > div {
+          min-width: 0;
+          width: min(326px, calc(100vw - 64px));
+          max-width: min(326px, calc(100vw - 64px));
+        }
+
+        h1 {
+          width: 100%;
+          max-width: min(326px, calc(100vw - 64px));
+          font-size: clamp(2rem, 9vw, 2.62rem);
+          line-height: 1.04;
+        }
+
+        .hero-lead {
+          max-width: min(326px, calc(100vw - 64px));
+          font-size: 1rem;
+          line-height: 1.68;
+        }
+
+        .hero-stage {
+          width: min(326px, calc(100vw - 64px));
+          min-height: 470px;
+        }
+
+        .floating-chip {
+          display: none;
+        }
+
+        .device {
+          width: min(340px, 92vw);
+          min-height: 280px;
+        }
+
+        .feature-grid,
+        .flow-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .button {
+          width: 100%;
+        }
+
+        .footer {
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <div class="grid-field"></div>
+      <header class="topbar">
+        <a class="brand" href="https://ateight.xyz/">
+          <span class="brand-mark">
+            <img src="./at8-logo.png" alt="" aria-hidden="true" />
+          </span>
+          <span class="brand-text">
+            <strong>Milad</strong>
+            <small>AT8</small>
+          </span>
+        </a>
+        <div class="header-tools">
+          <nav class="nav" aria-label="Page navigation">
+            <a href="https://ateight.xyz/" data-i18n="navHome">Home</a>
+            <a href="https://ateight.xyz/#about" data-i18n="navAbout">About Me</a>
+            <a href="https://ateight.xyz/#projects" data-i18n="navProjects">Projects</a>
+            <a href="https://ateight.xyz/#contact" data-i18n="navContact">Contact Me</a>
+          </nav>
+          <div class="lang-switch" aria-label="Language switcher">
+            <button type="button" class="active" data-lang="en" data-full="English" data-short="EN">English</button>
+            <button type="button" data-lang="fa" data-full="فارسی" data-short="FA">فارسی</button>
+            <button type="button" data-lang="ar" data-full="العربية" data-short="AR">العربية</button>
+            <button type="button" data-lang="de" data-full="Deutsch" data-short="DE">Deutsch</button>
+          </div>
+        </div>
+      </header>
+
+      <section class="hero">
+        <div>
+          <p class="eyebrow pill" data-i18n="heroKicker">Telegram Downloader Bot</p>
+          <h1 data-i18n="heroTitle">Download Instagram, YouTube and SoundCloud media inside Telegram.</h1>
+          <p class="hero-lead" data-i18n="heroLead">
+            A private Telegram bot that downloads YouTube, YouTube Shorts, Instagram, and SoundCloud
+            media on request, with admin activation, per-user cookies, forced-subscription control,
+            and a four-language interface.
+          </p>
+          <div class="actions">
+            <a class="button primary" data-i18n="actionGithub" href="https://github.com/miladateight/instagram-youtube-soundcloud-downloader">
+              Open GitHub repository
+            </a>
+            <a class="button" data-i18n="actionInstall" href="#install">
+              Quick install
+            </a>
+            <a class="button" data-i18n="actionHome" href="https://ateight.xyz/">
+              AT8 home
+            </a>
+          </div>
+        </div>
+
+        <div class="hero-stage" aria-hidden="true">
+          <div class="diagnostic-core">
+            <span class="orbit"></span>
+            <span class="orbit"></span>
+            <span class="orbit"></span>
+            <div class="device">
+              <div class="device-top">
+                <span>telegram-downloader.service</span>
+                <span data-i18n="deviceStatus">status: active</span>
+              </div>
+              <div class="terminal-line">
+                <strong data-i18n="sourcesLabel">Sources</strong>
+                <span data-i18n="sourcesValue">YouTube / Shorts / Instagram / SoundCloud</span>
+              </div>
+              <div class="terminal-line">
+                <strong data-i18n="deliveryLabel">Delivery</strong>
+                <span data-i18n="deliveryValue">video / photo / audio / album</span>
+              </div>
+              <div class="terminal-line">
+                <strong data-i18n="accessLabel">Access control</strong>
+                <span data-i18n="accessValue">admin activation / forced subscription</span>
+              </div>
+            </div>
+          </div>
+          <span class="floating-chip chip-1" data-i18n="chip1">MP3 export</span>
+          <span class="floating-chip chip-2" data-i18n="chip2">Cookies login</span>
+          <span class="floating-chip chip-3" data-i18n="chip3">Anti-spam guard</span>
+          <span class="floating-chip chip-4" data-i18n="chip4">Service logs</span>
+        </div>
+      </section>
+
+      <section id="features" class="section">
+        <div class="section-heading">
+          <p class="eyebrow pill" data-i18n="featuresKicker">What it does</p>
+          <h2 data-i18n="featuresTitle">One bot for every supported link.</h2>
+          <p data-i18n="featuresLead">
+            The bot detects supported links automatically and turns them into the right Telegram
+            delivery: video, photo, audio, or album.
+          </p>
+        </div>
+        <div class="feature-grid">
+          <article class="feature-card">
+            <span>01</span>
+            <h3 data-i18n="feature1Title">Multi-platform downloads</h3>
+            <p data-i18n="feature1Body">Downloads YouTube, YouTube Shorts, Instagram posts, Reels, profiles and carousels, and SoundCloud tracks through yt-dlp.</p>
+          </article>
+          <article class="feature-card">
+            <span>02</span>
+            <h3 data-i18n="feature2Title">Smart delivery</h3>
+            <p data-i18n="feature2Body">Sends video, photo, audio, or Telegram albums for multi-item posts, with captions on the first file and a 'Get full caption' button for long ones.</p>
+          </article>
+          <article class="feature-card">
+            <span>03</span>
+            <h3 data-i18n="feature3Title">Admin-gated access</h3>
+            <p data-i18n="feature3Body">The bot stays inactive until the admin sends /activate, and can run private-by-default or public with forced channel subscription.</p>
+          </article>
+          <article class="feature-card">
+            <span>04</span>
+            <h3 data-i18n="feature4Title">Per-user cookies</h3>
+            <p data-i18n="feature4Body">Each allowed user can upload and remove a personal cookies.txt for login-gated content, alongside an optional admin global cookies file.</p>
+          </article>
+          <article class="feature-card">
+            <span>05</span>
+            <h3 data-i18n="feature5Title">Four-language interface</h3>
+            <p data-i18n="feature5Body">Persian, English, Arabic, and German, picked once on first start and changed anytime with /language.</p>
+          </article>
+          <article class="feature-card">
+            <span>06</span>
+            <h3 data-i18n="feature6Title">Linux service install</h3>
+            <p data-i18n="feature6Body">A Python installer sets up a systemd service, with update, uninstall, and full-removal scripts and logs in logs/bot.log.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="flow" class="section">
+        <div class="section-heading">
+          <p class="eyebrow pill" data-i18n="flowKicker">Flow</p>
+          <h2 data-i18n="flowTitle">Send a link, get the media back.</h2>
+        </div>
+        <div class="flow-grid">
+          <article class="flow-card">
+            <span data-i18n="step1">step 1</span>
+            <h3 data-i18n="flow1Title">Send a link</h3>
+            <p data-i18n="flow1Body">Paste a YouTube, Shorts, Instagram, or SoundCloud link, or use /mp3 for audio only.</p>
+          </article>
+          <article class="flow-card">
+            <span data-i18n="step2">step 2</span>
+            <h3 data-i18n="flow2Title">The bot fetches it</h3>
+            <p data-i18n="flow2Body">yt-dlp resolves and downloads the media while a progress message moves from 0% to 100%.</p>
+          </article>
+          <article class="flow-card">
+            <span data-i18n="step3">step 3</span>
+            <h3 data-i18n="flow3Title">Smart delivery</h3>
+            <p data-i18n="flow3Body">The result comes back as video, photo, audio, or an album, with a caption and cover art when available.</p>
+          </article>
+          <article class="flow-card">
+            <span data-i18n="step4">step 4</span>
+            <h3 data-i18n="flow4Title">Admin stays in control</h3>
+            <p data-i18n="flow4Body">Activation, public or private mode, forced subscription, and cookies are all managed from inside Telegram.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="install" class="section">
+        <div class="download-panel">
+          <article class="download-card">
+            <p class="eyebrow pill" data-i18n="installKicker">Get the bot</p>
+            <h2>Telegram Downloader Bot</h2>
+            <p data-i18n="installLead">
+              Self-hosted on your own Ubuntu server. Clone the repository, run the Python installer,
+              and activate the bot from inside Telegram before it downloads anything.
+            </p>
+            <div class="download-row">
+              <a class="button primary" data-i18n="installButton" href="https://github.com/miladateight/instagram-youtube-soundcloud-downloader">
+                Open GitHub repository
+              </a>
+              <a class="button" data-i18n="guideButton" href="https://github.com/miladateight/instagram-youtube-soundcloud-downloader#readme">
+                Read the install guide
+              </a>
+            </div>
+          </article>
+          <aside class="download-card metric-list">
+            <div class="metric">
+              <strong data-i18n="metricRuntimeLabel">Runtime</strong>
+              <small data-i18n="metricRuntimeValue">Python 3</small>
+            </div>
+            <div class="metric">
+              <strong data-i18n="metricServiceLabel">Service</strong>
+              <small data-i18n="metricServiceValue">systemd</small>
+            </div>
+            <div class="metric">
+              <strong data-i18n="metricLanguagesLabel">Bot languages</strong>
+              <small data-i18n="metricLanguagesValue">FA / EN / AR / DE</small>
+            </div>
+            <div class="metric">
+              <strong data-i18n="metricAccessLabel">Access</strong>
+              <small data-i18n="metricAccessValue">Admin-gated</small>
+            </div>
+            <div class="check" data-i18n="installNote">Private by default. Each personal cookies file stays on your own server and is never shared.</div>
+          </aside>
+        </div>
+      </section>
+
+      <footer class="footer">
+        <span data-i18n="footerLeft">Telegram Downloader by Milad Ateight</span>
+        <nav class="footer-projects" aria-label="Other AT8 projects">
+          <a href="https://ateight.xyz/NetDoctor/" data-i18n="projNetDoctor">NetDoctor</a>
+          <a href="https://ateight.xyz/KeyFix/" data-i18n="projKeyFix">KeyFix</a>
+          <a href="https://ateight.xyz/hybrid-web-mail-infrastructure/" data-i18n="projHwmi">Hybrid Web &amp; Mail</a>
+        </nav>
+        <span data-i18n="footerRight">Project page: ateight.xyz/instagram-youtube-soundcloud-downloader</span>
+      </footer>
+    </main>
+    <script>
+      const copy =       {
+        "en": {
+          "dir": "ltr",
+          "title": "Telegram Downloader | AT8",
+          "brandSub": "by Milad Ateight / AT8",
+          "navHome": "Home",
+          "navAbout": "About Me",
+          "navProjects": "Projects",
+          "navContact": "Contact Me",
+          "heroKicker": "Telegram Downloader Bot",
+          "heroTitle": "Download Instagram, YouTube and SoundCloud media inside Telegram.",
+          "heroLead": "A private Telegram bot that downloads YouTube, YouTube Shorts, Instagram, and SoundCloud media on request, with admin activation, per-user cookies, forced-subscription control, and a four-language interface.",
+          "actionGithub": "Open GitHub repository",
+          "actionInstall": "Quick install",
+          "actionHome": "AT8 home",
+          "deviceStatus": "status: active",
+          "sourcesLabel": "Sources",
+          "sourcesValue": "YouTube / Shorts / Instagram / SoundCloud",
+          "deliveryLabel": "Delivery",
+          "deliveryValue": "video / photo / audio / album",
+          "accessLabel": "Access control",
+          "accessValue": "admin activation / forced subscription",
+          "chip1": "MP3 export",
+          "chip2": "Cookies login",
+          "chip3": "Anti-spam guard",
+          "chip4": "Service logs",
+          "featuresKicker": "What it does",
+          "featuresTitle": "One bot for every supported link.",
+          "featuresLead": "The bot detects supported links automatically and turns them into the right Telegram delivery: video, photo, audio, or album.",
+          "feature1Title": "Multi-platform downloads",
+          "feature1Body": "Downloads YouTube, YouTube Shorts, Instagram posts, Reels, profiles and carousels, and SoundCloud tracks through yt-dlp.",
+          "feature2Title": "Smart delivery",
+          "feature2Body": "Sends video, photo, audio, or Telegram albums for multi-item posts, with captions on the first file and a 'Get full caption' button for long ones.",
+          "feature3Title": "Admin-gated access",
+          "feature3Body": "The bot stays inactive until the admin sends /activate, and can run private-by-default or public with forced channel subscription.",
+          "feature4Title": "Per-user cookies",
+          "feature4Body": "Each allowed user can upload and remove a personal cookies.txt for login-gated content, alongside an optional admin global cookies file.",
+          "feature5Title": "Four-language interface",
+          "feature5Body": "Persian, English, Arabic, and German, picked once on first start and changed anytime with /language.",
+          "feature6Title": "Linux service install",
+          "feature6Body": "A Python installer sets up a systemd service, with update, uninstall, and full-removal scripts and logs in logs/bot.log.",
+          "flowKicker": "Flow",
+          "flowTitle": "Send a link, get the media back.",
+          "step1": "step 1",
+          "flow1Title": "Send a link",
+          "flow1Body": "Paste a YouTube, Shorts, Instagram, or SoundCloud link, or use /mp3 for audio only.",
+          "step2": "step 2",
+          "flow2Title": "The bot fetches it",
+          "flow2Body": "yt-dlp resolves and downloads the media while a progress message moves from 0% to 100%.",
+          "step3": "step 3",
+          "flow3Title": "Smart delivery",
+          "flow3Body": "The result comes back as video, photo, audio, or an album, with a caption and cover art when available.",
+          "step4": "step 4",
+          "flow4Title": "Admin stays in control",
+          "flow4Body": "Activation, public or private mode, forced subscription, and cookies are all managed from inside Telegram.",
+          "installKicker": "Get the bot",
+          "installLead": "Self-hosted on your own Ubuntu server. Clone the repository, run the Python installer, and activate the bot from inside Telegram before it downloads anything.",
+          "installButton": "Open GitHub repository",
+          "guideButton": "Read the install guide",
+          "installNote": "Private by default. Each personal cookies file stays on your own server and is never shared.",
+          "metricRuntimeLabel": "Runtime",
+          "metricServiceLabel": "Service",
+          "metricLanguagesLabel": "Bot languages",
+          "metricAccessLabel": "Access",
+          "metricRuntimeValue": "Python 3",
+          "metricServiceValue": "systemd",
+          "metricLanguagesValue": "FA / EN / AR / DE",
+          "metricAccessValue": "Admin-gated",
+          "footerLeft": "Telegram Downloader by Milad Ateight",
+          "footerRight": "Project page: ateight.xyz/instagram-youtube-soundcloud-downloader",
+          "projNetDoctor": "NetDoctor",
+          "projKeyFix": "KeyFix",
+          "projHwmi": "Hybrid Web & Mail"
+        },
+        "fa": {
+          "dir": "rtl",
+          "title": "دانلودر تلگرام | AT8",
+          "brandSub": "ساخته میلاد Ateight / AT8",
+          "navHome": "خانه",
+          "navAbout": "درباره من",
+          "navProjects": "پروژه ها",
+          "navContact": "تماس با من",
+          "heroKicker": "بات دانلودر تلگرام",
+          "heroTitle": "دانلود اینستاگرام، یوتیوب و ساندکلاد داخل تلگرام.",
+          "heroLead": "یک بات خصوصی تلگرام که با درخواست، رسانه‌ی یوتیوب، یوتیوب شورتز، اینستاگرام و ساندکلاد را دانلود می‌کند؛ با فعال‌سازی توسط ادمین، Cookies شخصی هر کاربر، کنترل عضویت اجباری و رابط چهار زبانه.",
+          "actionGithub": "باز کردن ریپازیتوری GitHub",
+          "actionInstall": "نصب سریع",
+          "actionHome": "خانه AT8",
+          "deviceStatus": "وضعیت: فعال",
+          "sourcesLabel": "منابع",
+          "sourcesValue": "یوتیوب / شورتز / اینستاگرام / ساندکلاد",
+          "deliveryLabel": "تحویل",
+          "deliveryValue": "ویدیو / عکس / صدا / آلبوم",
+          "accessLabel": "کنترل دسترسی",
+          "accessValue": "فعال‌سازی ادمین / عضویت اجباری",
+          "chip1": "خروجی MP3",
+          "chip2": "ورود با Cookies",
+          "chip3": "محافظ Anti-spam",
+          "chip4": "لاگ سرویس",
+          "featuresKicker": "چه کاری انجام می‌دهد",
+          "featuresTitle": "یک بات برای هر لینک پشتیبانی‌شده.",
+          "featuresLead": "بات لینک‌های پشتیبانی‌شده را خودکار تشخیص می‌دهد و آن‌ها را به تحویل درست تلگرامی تبدیل می‌کند: ویدیو، عکس، صدا یا آلبوم.",
+          "feature1Title": "دانلود چندپلتفرمی",
+          "feature1Body": "یوتیوب، یوتیوب شورتز، پست‌ها و Reels و پروفایل و کاروسل‌های اینستاگرام و ترک‌های ساندکلاد را با yt-dlp دانلود می‌کند.",
+          "feature2Title": "تحویل هوشمند",
+          "feature2Body": "ویدیو، عکس، صدا یا آلبوم تلگرام برای پست‌های چندآیتمی می‌فرستد؛ کپشن روی فایل اول و دکمه‌ی «دیدن کپشن کامل» برای کپشن‌های طولانی.",
+          "feature3Title": "دسترسی با تأیید ادمین",
+          "feature3Body": "بات تا وقتی ادمین /activate نزند غیرفعال می‌ماند و می‌تواند به‌صورت پیش‌فرض خصوصی یا عمومی با عضویت اجباری کانال کار کند.",
+          "feature4Title": "Cookies شخصی هر کاربر",
+          "feature4Body": "هر کاربر مجاز می‌تواند یک cookies.txt شخصی برای محتوای login-gated آپلود و حذف کند؛ یک فایل cookies سراسری اختیاری هم برای ادمین وجود دارد.",
+          "feature5Title": "رابط چهار زبانه",
+          "feature5Body": "فارسی، انگلیسی، عربی و آلمانی؛ یک‌بار در شروع انتخاب می‌شود و هر وقت با /language قابل تغییر است.",
+          "feature6Title": "نصب به‌عنوان سرویس لینوکس",
+          "feature6Body": "یک نصب‌کننده‌ی Python یک سرویس systemd راه‌اندازی می‌کند، با اسکریپت‌های update، uninstall و حذف کامل و لاگ در logs/bot.log.",
+          "flowKicker": "روند کار",
+          "flowTitle": "لینک را بفرست، رسانه را بگیر.",
+          "step1": "مرحله ۱",
+          "flow1Title": "لینک را بفرست",
+          "flow1Body": "یک لینک یوتیوب، شورتز، اینستاگرام یا ساندکلاد بفرست، یا برای فقط صدا از /mp3 استفاده کن.",
+          "step2": "مرحله ۲",
+          "flow2Title": "بات آن را می‌گیرد",
+          "flow2Body": "yt-dlp رسانه را پیدا و دانلود می‌کند در حالی که یک پیام پیشرفت از ۰٪ تا ۱۰۰٪ حرکت می‌کند.",
+          "step3": "مرحله ۳",
+          "flow3Title": "تحویل هوشمند",
+          "flow3Body": "نتیجه به‌صورت ویدیو، عکس، صدا یا آلبوم برمی‌گردد؛ با کپشن و کاور (در صورت وجود).",
+          "step4": "مرحله ۴",
+          "flow4Title": "ادمین کنترل را در دست دارد",
+          "flow4Body": "فعال‌سازی، حالت عمومی یا خصوصی، عضویت اجباری و Cookies همگی از داخل تلگرام مدیریت می‌شوند.",
+          "installKicker": "تهیه‌ی بات",
+          "installLead": "روی سرور Ubuntu خودت self-hosted می‌شود. ریپو را clone کن، نصب‌کننده‌ی Python را اجرا کن و قبل از هر دانلودی، بات را از داخل تلگرام فعال کن.",
+          "installButton": "باز کردن ریپازیتوری GitHub",
+          "guideButton": "خواندن راهنمای نصب",
+          "installNote": "به‌صورت پیش‌فرض خصوصی است. فایل Cookies شخصی هر کاربر فقط روی سرور خودت می‌ماند و هیچ‌وقت به‌اشتراک گذاشته نمی‌شود.",
+          "metricRuntimeLabel": "ران‌تایم",
+          "metricServiceLabel": "سرویس",
+          "metricLanguagesLabel": "زبان‌های بات",
+          "metricAccessLabel": "دسترسی",
+          "metricRuntimeValue": "Python 3",
+          "metricServiceValue": "systemd",
+          "metricLanguagesValue": "FA / EN / AR / DE",
+          "metricAccessValue": "با تأیید ادمین",
+          "footerLeft": "دانلودر تلگرام ساخته‌ی میلاد Ateight",
+          "footerRight": "صفحه پروژه: ateight.xyz/instagram-youtube-soundcloud-downloader",
+          "projNetDoctor": "نت‌دکتر",
+          "projKeyFix": "کی‌فیکس",
+          "projHwmi": "وب و ایمیل ترکیبی"
+        },
+        "ar": {
+          "dir": "rtl",
+          "title": "بوت تيليجرام للتحميل | AT8",
+          "brandSub": "بواسطة Milad Ateight / AT8",
+          "navHome": "الرئيسية",
+          "navAbout": "من أنا",
+          "navProjects": "المشاريع",
+          "navContact": "تواصل معي",
+          "heroKicker": "بوت تيليجرام للتحميل",
+          "heroTitle": "نزّل من إنستغرام ويوتيوب وساوندكلاود داخل تيليجرام.",
+          "heroLead": "بوت تيليجرام خاص يحمّل عند الطلب وسائط من يوتيوب ويوتيوب شورتس وإنستغرام وساوندكلاود، مع تفعيل من المسؤول، وملفات cookies شخصية لكل مستخدم، وتحكم في الاشتراك الإلزامي، وواجهة بأربع لغات.",
+          "actionGithub": "فتح مستودع GitHub",
+          "actionInstall": "تثبيت سريع",
+          "actionHome": "صفحة AT8",
+          "deviceStatus": "الحالة: نشط",
+          "sourcesLabel": "المصادر",
+          "sourcesValue": "يوتيوب / شورتس / إنستغرام / ساوندكلاود",
+          "deliveryLabel": "التسليم",
+          "deliveryValue": "فيديو / صورة / صوت / ألبوم",
+          "accessLabel": "التحكم بالوصول",
+          "accessValue": "تفعيل المسؤول / اشتراك إلزامي",
+          "chip1": "تصدير MP3",
+          "chip2": "تسجيل دخول بـ Cookies",
+          "chip3": "حماية من السبام",
+          "chip4": "سجلات الخدمة",
+          "featuresKicker": "ماذا يفعل",
+          "featuresTitle": "بوت واحد لكل رابط مدعوم.",
+          "featuresLead": "يكتشف البوت الروابط المدعومة تلقائيا ويحولها إلى تسليم تيليجرام مناسب: فيديو أو صورة أو صوت أو ألبوم.",
+          "feature1Title": "تحميل من منصات متعددة",
+          "feature1Body": "يحمّل من يوتيوب ويوتيوب شورتس ومنشورات إنستغرام وReels والملفات الشخصية والمنشورات المتعددة، وموسيقى ساوندكلاود عبر yt-dlp.",
+          "feature2Title": "تسليم ذكي",
+          "feature2Body": "يرسل فيديو أو صورة أو صوتا أو ألبوم تيليجرام للمنشورات متعددة العناصر، مع تعليق على أول ملف وزر «عرض التعليق الكامل» للتعليقات الطويلة.",
+          "feature3Title": "وصول بإذن المسؤول",
+          "feature3Body": "يبقى البوت معطلا حتى يرسل المسؤول /activate، ويمكن أن يعمل خاصا بشكل افتراضي أو عاما مع اشتراك إلزامي في القناة.",
+          "feature4Title": "ملفات cookies شخصية",
+          "feature4Body": "يمكن لكل مستخدم مسموح له رفع وإزالة ملف cookies.txt شخصي للمحتوى المقيد بتسجيل الدخول، إلى جانب ملف cookies عام اختياري للمسؤول.",
+          "feature5Title": "واجهة بأربع لغات",
+          "feature5Body": "الفارسية والإنجليزية والعربية والألمانية، تُختار مرة واحدة عند البدء وتتغير في أي وقت عبر /language.",
+          "feature6Title": "تثبيت كخدمة لينكس",
+          "feature6Body": "يثبّت مثبّت Python خدمة systemd، مع سكربتات للتحديث والإزالة والحذف الكامل، وسجلات في logs/bot.log.",
+          "flowKicker": "المسار",
+          "flowTitle": "أرسل رابطا، واستلم الوسائط.",
+          "step1": "الخطوة 1",
+          "flow1Title": "أرسل رابطا",
+          "flow1Body": "ألصق رابط يوتيوب أو شورتس أو إنستغرام أو ساوندكلاود، أو استخدم /mp3 للصوت فقط.",
+          "step2": "الخطوة 2",
+          "flow2Title": "يجلبه البوت",
+          "flow2Body": "يحلل yt-dlp الوسائط ويحمّلها بينما تتحرك رسالة تقدم من 0% إلى 100%.",
+          "step3": "الخطوة 3",
+          "flow3Title": "تسليم ذكي",
+          "flow3Body": "تعود النتيجة كفيديو أو صورة أو صوت أو ألبوم، مع تعليق وصورة غلاف عند توفرها.",
+          "step4": "الخطوة 4",
+          "flow4Title": "المسؤول يبقى في التحكم",
+          "flow4Body": "يُدار التفعيل والوضع العام أو الخاص والاشتراك الإلزامي وملفات cookies كلها من داخل تيليجرام.",
+          "installKicker": "الحصول على البوت",
+          "installLead": "يُستضاف ذاتيا على خادم Ubuntu الخاص بك. استنسخ المستودع، شغّل مثبّت Python، وفعّل البوت من داخل تيليجرام قبل أن يحمّل أي شيء.",
+          "installButton": "فتح مستودع GitHub",
+          "guideButton": "قراءة دليل التثبيت",
+          "installNote": "خاص بشكل افتراضي. يبقى ملف cookies الشخصي لكل مستخدم على خادمك فقط ولا يُشارك أبدا.",
+          "metricRuntimeLabel": "بيئة التشغيل",
+          "metricServiceLabel": "الخدمة",
+          "metricLanguagesLabel": "لغات البوت",
+          "metricAccessLabel": "الوصول",
+          "metricRuntimeValue": "Python 3",
+          "metricServiceValue": "systemd",
+          "metricLanguagesValue": "FA / EN / AR / DE",
+          "metricAccessValue": "بإذن المسؤول",
+          "footerLeft": "بوت تيليجرام للتحميل بواسطة Milad Ateight",
+          "footerRight": "صفحة المشروع: ateight.xyz/instagram-youtube-soundcloud-downloader",
+          "projNetDoctor": "نت دكتور",
+          "projKeyFix": "كي فيكس",
+          "projHwmi": "البنية الهجينة للويب والبريد"
+        },
+        "de": {
+          "dir": "ltr",
+          "title": "Telegram-Downloader | AT8",
+          "brandSub": "von Milad Ateight / AT8",
+          "navHome": "Home",
+          "navAbout": "About Me",
+          "navProjects": "Projects",
+          "navContact": "Contact Me",
+          "heroKicker": "Telegram-Downloader-Bot",
+          "heroTitle": "Instagram-, YouTube- und SoundCloud-Medien direkt in Telegram herunterladen.",
+          "heroLead": "Ein privater Telegram-Bot, der auf Anfrage Medien von YouTube, YouTube Shorts, Instagram und SoundCloud herunterlädt - mit Admin-Aktivierung, persönlichen Cookies pro Nutzer, Pflicht-Abo-Kontrolle und einer viersprachigen Oberfläche.",
+          "actionGithub": "GitHub-Repository öffnen",
+          "actionInstall": "Schnellinstallation",
+          "actionHome": "AT8 Home",
+          "deviceStatus": "Status: aktiv",
+          "sourcesLabel": "Quellen",
+          "sourcesValue": "YouTube / Shorts / Instagram / SoundCloud",
+          "deliveryLabel": "Zustellung",
+          "deliveryValue": "Video / Foto / Audio / Album",
+          "accessLabel": "Zugriffskontrolle",
+          "accessValue": "Admin-Aktivierung / Pflicht-Abo",
+          "chip1": "MP3-Export",
+          "chip2": "Cookie-Login",
+          "chip3": "Anti-Spam-Schutz",
+          "chip4": "Service-Logs",
+          "featuresKicker": "Was er kann",
+          "featuresTitle": "Ein Bot für jeden unterstützten Link.",
+          "featuresLead": "Der Bot erkennt unterstützte Links automatisch und liefert sie passend über Telegram aus: Video, Foto, Audio oder Album.",
+          "feature1Title": "Downloads von mehreren Plattformen",
+          "feature1Body": "Lädt YouTube, YouTube Shorts, Instagram-Posts, Reels, Profile und Karussells sowie SoundCloud-Tracks über yt-dlp herunter.",
+          "feature2Title": "Intelligente Zustellung",
+          "feature2Body": "Sendet Video, Foto, Audio oder Telegram-Alben für Mehrfach-Posts, mit Caption auf der ersten Datei und einem Button für die vollständige Caption bei langen Texten.",
+          "feature3Title": "Zugriff nur mit Admin-Freigabe",
+          "feature3Body": "Der Bot bleibt inaktiv, bis der Admin /activate sendet, und kann standardmäßig privat oder öffentlich mit Pflicht-Kanal-Abo laufen.",
+          "feature4Title": "Persönliche Cookies pro Nutzer",
+          "feature4Body": "Jeder freigegebene Nutzer kann eine persönliche cookies.txt für anmeldepflichtige Inhalte hochladen und entfernen, zusätzlich zu einer optionalen globalen Admin-Cookie-Datei.",
+          "feature5Title": "Viersprachige Oberfläche",
+          "feature5Body": "Persisch, Englisch, Arabisch und Deutsch - einmal beim ersten Start gewählt und jederzeit über /language änderbar.",
+          "feature6Title": "Installation als Linux-Dienst",
+          "feature6Body": "Ein Python-Installer richtet einen systemd-Dienst ein, mit Update-, Deinstallations- und Komplett-Entfernungs-Skripten sowie Logs in logs/bot.log.",
+          "flowKicker": "Ablauf",
+          "flowTitle": "Link senden, Medien erhalten.",
+          "step1": "Schritt 1",
+          "flow1Title": "Link senden",
+          "flow1Body": "Einen YouTube-, Shorts-, Instagram- oder SoundCloud-Link einfügen, oder /mp3 für nur Audio nutzen.",
+          "step2": "Schritt 2",
+          "flow2Title": "Der Bot holt ihn",
+          "flow2Body": "yt-dlp löst die Medien auf und lädt sie herunter, während eine Fortschrittsnachricht von 0% auf 100% wandert.",
+          "step3": "Schritt 3",
+          "flow3Title": "Intelligente Zustellung",
+          "flow3Body": "Das Ergebnis kommt als Video, Foto, Audio oder Album zurück, mit Caption und Cover-Art, wenn verfügbar.",
+          "step4": "Schritt 4",
+          "flow4Title": "Admin behält die Kontrolle",
+          "flow4Body": "Aktivierung, öffentlicher oder privater Modus, Pflicht-Abo und Cookies werden alle direkt in Telegram verwaltet.",
+          "installKicker": "Bot einrichten",
+          "installLead": "Self-hosted auf dem eigenen Ubuntu-Server. Repository klonen, den Python-Installer ausführen und den Bot in Telegram aktivieren, bevor er etwas herunterlädt.",
+          "installButton": "GitHub-Repository öffnen",
+          "guideButton": "Installationsanleitung lesen",
+          "installNote": "Standardmäßig privat. Die persönliche Cookie-Datei jedes Nutzers bleibt nur auf dem eigenen Server und wird nie geteilt.",
+          "metricRuntimeLabel": "Runtime",
+          "metricServiceLabel": "Dienst",
+          "metricLanguagesLabel": "Bot-Sprachen",
+          "metricAccessLabel": "Zugriff",
+          "metricRuntimeValue": "Python 3",
+          "metricServiceValue": "systemd",
+          "metricLanguagesValue": "FA / EN / AR / DE",
+          "metricAccessValue": "Nur mit Admin",
+          "footerLeft": "Telegram-Downloader von Milad Ateight",
+          "footerRight": "Projektseite: ateight.xyz/instagram-youtube-soundcloud-downloader",
+          "projNetDoctor": "NetDoctor",
+          "projKeyFix": "KeyFix",
+          "projHwmi": "Hybrid Web & Mail"
+        }
+      };
+
+      const languageButtons = document.querySelectorAll("[data-lang]");
+      const translatedNodes = document.querySelectorAll("[data-i18n]");
+
+      function setLanguage(language) {
+        const dictionary = copy[language] || copy.en;
+        document.documentElement.lang = language;
+        document.documentElement.dir = dictionary.dir;
+        document.body.classList.toggle("rtl", dictionary.dir === "rtl");
+        document.title = dictionary.title;
+        translatedNodes.forEach((node) => {
+          const key = node.dataset.i18n;
+          if (dictionary[key]) node.textContent = dictionary[key];
+        });
+        languageButtons.forEach((button) => {
+          button.classList.toggle("active", button.dataset.lang === language);
+        });
+      }
+
+      languageButtons.forEach((button) => {
+        button.addEventListener("click", () => setLanguage(button.dataset.lang));
+      });
+
+      function syncLanguageButtonLabels() {
+        const short = window.matchMedia("(max-width: 680px)").matches;
+        languageButtons.forEach((button) => {
+          button.textContent = short ? button.dataset.short : button.dataset.full;
+        });
+      }
+
+      const initialLanguage = new URLSearchParams(window.location.search).get("lang") || "en";
+      syncLanguageButtonLabels();
+      setLanguage(initialLanguage);
+      window.addEventListener("resize", syncLanguageButtonLabels);
+    </script>
+  </body>
+</html>
