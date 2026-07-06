@@ -314,7 +314,7 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
         lowered = str(exc).lower()
         return any(tok in lowered for tok in ("empty media response", "login required", "login to", "log in to", "cookie", "cookies", "sign in"))
 
-    async def notify_admin_cookie_issue(exc: Exception, url: str) -> None:
+    async def notify_admin_cookie_issue(exc: Exception, url: str, bot: Bot) -> None:
         if not is_cookie_error(exc):
             return
         admin_lang = state.user_language(settings.admin_id, "fa")
@@ -984,7 +984,7 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
                     with suppress(Exception):
                         await progress_task
                     logging.exception("Download failed for %s", url)
-                    await notify_admin_cookie_issue(exc, url)
+                    await notify_admin_cookie_issue(exc, url, bot)
                     await status_message.edit_text(
                         t(language, "download_failed", error=friendly_error(exc, language)),
                         reply_markup=error_keyboard(language),
@@ -1066,7 +1066,7 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
                 with suppress(Exception):
                     await progress_task
                 logging.exception("Callback download failed for %s", url)
-                await notify_admin_cookie_issue(exc, url)
+                await notify_admin_cookie_issue(exc, url, bot)
                 await status_message.edit_text(
                     t(language, "download_failed", error=friendly_error(exc, language)),
                     reply_markup=error_keyboard(language),
@@ -1146,7 +1146,7 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
                     state.delete_pending_link(token)
             except Exception as exc:
                 logging.exception("Song detection failed for %s", url)
-                await notify_admin_cookie_issue(exc, url)
+                await notify_admin_cookie_issue(exc, url, bot)
                 await status_message.edit_text(
                     t(language, "download_failed", error=friendly_error(exc, language)),
                     reply_markup=error_keyboard(language),

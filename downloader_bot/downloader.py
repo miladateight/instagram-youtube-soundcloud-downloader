@@ -164,6 +164,8 @@ class Downloader:
             "noplaylist": False,
             "playlistend": self.settings.playlist_limit,
             "ignoreerrors": True,
+            "sleep_interval": 0,
+            "max_sleep_interval": 0,
         }
         if cookies_file and cookies_file.exists():
             probe_options["cookiefile"] = str(cookies_file)
