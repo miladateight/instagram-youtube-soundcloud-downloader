@@ -1,8 +1,10 @@
-# ربات دانلودر تلگرام
+# Atieght Downloader
 
 **زبان:** [English](README.md) | [فارسی](README.fa.md) | [العربية](README.ar.md) | [Deutsch](README.de.md)
 
-یک ربات خصوصی و رزومه‌ای تلگرام برای دانلود رسانه‌های پشتیبانی‌شده از YouTube، YouTube Shorts، Instagram و SoundCloud.
+**نسخه ۱.۰.۰**
+
+یک ربات خصوصی و رزومه‌ای تلگرام برای دانلود رسانه از YouTube، YouTube Shorts، Instagram و SoundCloud — با دکمه‌های شیشه‌ای، تشخیص آهنگ و نصب تعاملی.
 
 این پروژه کاملاً با Python نوشته شده و برای نصب ساده روی Ubuntu آماده است. ربات بعد از نصب به صورت پیش‌فرض غیرفعال می‌ماند تا مدیر از داخل تلگرام آن را فعال کند.
 
@@ -10,113 +12,128 @@
 
 ## قابلیت‌ها
 
-- تشخیص خودکار لینک‌های YouTube، `youtu.be`، Shorts، Instagram و SoundCloud
+### دانلود
+- تشخیص خودکار لینک‌های YouTube، `youtu.be`، Shorts، `m.youtube.com`، `music.youtube.com`، Instagram و SoundCloud
 - دانلود و ارسال ویدیو، عکس، فایل صوتی و فایل‌های عمومی با `yt-dlp`
 - پشتیبانی از پست‌ها، ریلزها، پروفایل‌ها و بسیاری از carouselهای Instagram
-- ارسال پست‌های چندتایی Instagram به شکل album/media group
-- مدیریت caption طولانی با پیش‌نمایش کوتاه و دکمه «دریافت کامل کپشن»
-- رابط کاربری چهارزبانه: فارسی، انگلیسی، عربی و آلمانی
-- انتخاب زبان کاربر فقط بار اول، و تغییر بعدی با `/language`
-- فعال‌سازی ربات توسط مدیر از داخل تلگرام
-- باز و بسته کردن دسترسی عمومی با `/public_on` و `/public_off`
-- آپلود cookies شخصی توسط کاربران مجاز و cookies عمومی توسط مدیر
-- عضویت اجباری قابل فعال/غیرفعال‌سازی توسط مدیر
-- ارسال بهتر SoundCloud با کاور، نام آهنگ و نام خواننده
-- نصب، آپدیت و حذف کامل با اسکریپت‌های Python روی Ubuntu
-- اجرای دائمی با systemd و لاگ داخل `logs/bot.log`
+- ارسال carouselهای Instagram به‌صورت آلبوم تلگرام
+- **ابعاد صحیح ویدیو** — ریلزها و شورتزها نسبت ابعاد اصلی خود را حفظ می‌کنند (دیگه مربعی نمی‌شوند)
+- دانلود ویدیوهای YouTube ترجیحاً به‌صورت MP4 دوستانه تلگرام به‌جای WebM
+- SoundCloud: بهترین کیفیت صوتی برای فایل‌های زیر ۱۵ دقیقه، کاور آلبوم جداگانه قبل از صدا ارسال می‌شود
+- کپشن به اولین فایل اضافه می‌شود
+- کپشن‌های طولانی به‌صورت ایمن کوتاه می‌شوند با دکمه «دریافت کامل کپشن»
+- fallback به ارسال به‌عنوان فایل اگه حجم از حد تلگرام بیشتر باشه
+
+### تجربه کاربری
+- **دکمه‌های شیشه‌ای** — بعد از فرستادن لینک، ربات می‌پرسه چه می‌خوای: فیلم، صدا (MP3) یا پیدا کردن آهنگ
+- **منوی کیبورد دائمی** — دکمه‌های پایین چت: دانلود، MP3، وضعیت، زبان، اشتراک‌گذاری، پشتیبانی
+- **تشخیص آهنگ** — آهنگ داخل ویدیو رو با شزم شناسایی می‌کنه (رایگان، بدون نیاز به API key)
+- **دکمه پشتیبانی** — کاربرا می‌تونن مستقیم از هر پیام خطایی با مدیر در ارتباط باشن
+- **دکمه اشتراک‌گذاری** — کاربرا می‌تونن ربات رو به دوستاشون معرفی کنن
+- پیشرفت واقعی دانلود (با استفاده از progress hookهای yt-dlp)
+- محافظ ضد اسپم برای هر کاربر: یه دانلود فعال و یه درخواست جدید هر ۵ ثانیه
+- رابط کاربری چهار زبانه: فارسی، انگلیسی، عربی و آلمانی
+- انتخاب زبان یک‌باره، با تغییر دستی از `/language`
+- پیام‌های خطای دسته‌بندی‌شده (ارورهای خام yt-dlp به کاربر نشون داده نمی‌شه)
+
+### مدیر
+- فعال‌سازی از داخل تلگرام
+- آپلود و حذف `cookies.txt` شخصی برای هر کاربر
+- `cookies.txt` عمومی اختیاری برای مدیر
+- عضویت اجباری کانال کنترل‌شده توسط مدیر
+- دسترسی خصوصی به‌صورت پیش‌فرض، با حالت عمومی کنترل‌شده از پنل مدیر
+- فعال/غیرفعال کردن پلتفرم‌ها: YouTube، Instagram، SoundCloud یا تشخیص آهنگ
+
+### نصب
+- **منوی تعاملی انتخاب ویژگی‌ها** (whiptail روی لینوکس، fallback متنی)
+- بنر ASCII art برند Atieght
+- پرسیدن نام ربات، توکن، آیدی مدیر، username پشتیبانی و username ربات
+- انتخاب پلتفرم‌ها و قابلیت‌ها
+- API key اختیاری برای شزم
+- نصب Python و سرویس systemd برای Ubuntu
+- اسکریپت‌های آپدیت و حذف برای سرورهای Ubuntu
+- لاگ‌های سرویس در `logs/bot.log`
 
 ## نصب سریع روی Ubuntu
 
 ```bash
-git clone https://github.com/miladateight/instagram-youtube-soundcloud-downloader.git && cd instagram-youtube-soundcloud-downloader && python3 install.py
+bash -c 'set -e; repo=instagram-youtube-soundcloud-downloader; if [ -f install.py ] && [ -d .git ]; then python3 install.py; elif [ -d "$repo/.git" ]; then cd "$repo" && python3 install.py; elif [ -e "$repo" ]; then echo "$repo already exists but is not a git checkout. Remove it first or choose another directory."; exit 1; else git clone https://github.com/miladateight/instagram-youtube-soundcloud-downloader.git "$repo" && cd "$repo" && python3 install.py; fi'
 ```
 
-نصاب از تو می‌پرسد:
+`python3 install.py` هم دستور آپدیت هست. اگه `.env` وجود داشته باشه، وابستگی‌ها رو آپدیت می‌کنه، آخرین کد رو می‌گیره و سرویس رو ری‌استارت می‌کنه:
 
-- نام ربات
+```bash
+cd instagram-youtube-soundcloud-downloader
+python3 install.py
+```
+
+نصب‌کننده این موارد رو می‌پرسه:
+
+- نام ربات (پیش‌فرض: Atieght Downloader)
 - توکن ربات از BotFather
-- آیدی عددی مدیر
+- آیدی عددی مدیر تلگرام
+- username مدیر تلگرام برای دکمه پشتیبانی (اختیاری)
+- username ربات برای دکمه اشتراک‌گذاری (اختیاری)
+- کدوم پلتفرم‌ها فعال باشن (YouTube، Instagram، SoundCloud)
+- آیا تشخیص آهنگ (شزم) فعال باشه
+- API key اختیاری برای شزم
 
-بعد از نصب، در تلگرام به ربات پیام بده و به عنوان مدیر دستور زیر را بزن:
+بعد از نصب، ربات رو تو تلگرام باز کن و به‌عنوان مدیر بفرست:
 
 ```text
 /activate
 ```
 
-تا وقتی این دستور اجرا نشود، ربات هیچ دانلودی انجام نمی‌دهد.
+ربات تا فعال نشده چیزی دانلود نمی‌کنه.
 
-## دستورهای کاربر
+## دستورات ربات
 
-- `/start` شروع ربات؛ اگر زبان قبلاً انتخاب شده باشد فقط پیام کوتاه می‌دهد
+- `/start` شروع ربات؛ زبان فقط یک‌بار پرسیده می‌شه
 - `/language` یا `/lang` تغییر زبان کاربر
-- `/help` راهنما
+- `/help` نمایش راهنما
 - `/id` نمایش آیدی عددی کاربر
-- `/status` نمایش وضعیت ربات
-- `/cookies` راهنمای آپلود cookies شخصی
-- `/clearcookies` حذف cookies شخصی ذخیره‌شده
-
-## دستورهای مدیر
-
-- `/admin` پنل مدیر
+- `/mp3 <link>` دانلود فقط صدا به‌صورت MP3
+- `/status` نمایش وضعیت cookies کاربر و وضعیت کامل برای مدیر
+- `/admin` باز کردن پنل مدیر
 - `/activate` فعال کردن دانلودها
 - `/deactivate` غیرفعال کردن دانلودها
 - `/public_on` باز کردن دسترسی عمومی
 - `/public_off` بستن دسترسی عمومی
-- `/clearcookies global` حذف cookies عمومی ربات
-- `/forcejoin` وضعیت عضویت اجباری
+- `/cookies` راهنمای آپلود cookies
+- `/clearcookies` حذف cookies شخصی کاربر
+- `/clearcookies global` حذف cookies عمومی مدیر
+- `/forcejoin` نمایش وضعیت عضویت اجباری
 - `/forcejoin_on @channel` فعال کردن عضویت اجباری
 - `/forcejoin_off` غیرفعال کردن عضویت اجباری
+- `/support` نمایش دکمه پشتیبانی
+- `/share` نمایش پیام آماده اشتراک‌گذاری
+- `/about` نمایش اطلاعات ربات و نسخه
 
-## دسترسی عمومی
+## چطور کار می‌کنه
 
-ربات به صورت پیش‌فرض خصوصی است. مدیر می‌تواند از داخل ربات دسترسی عمومی را باز یا بسته کند:
+۱. **لینک بفرست** — یه لینک YouTube، Instagram یا SoundCloud بفرست
+۲. **فرمت رو انتخاب کن** — ربات دکمه‌های شیشه‌ای نشون می‌ده: فیلم، صدا (MP3) یا پیدا کردن آهنگ
+۳. **نتیجه رو بگیر** — ربات دانلود می‌کنه و رسانه رو با ابعاد صحیح و thumbnail می‌فرسته
 
-```text
-/public_on
-/public_off
-```
-
-اگر دسترسی عمومی بسته باشد، فقط مدیر و کاربرانی که در تنظیمات مجاز شده‌اند می‌توانند از ربات استفاده کنند.
+برای SoundCloud، ربات خودکار صدا رو دانلود می‌کنه (بدون دکمه) و کاور آلبوم رو جداگانه قبل از صدا می‌فرسته.
 
 ## عضویت اجباری
 
-مدیر می‌تواند کاربران را ملزم کند قبل از دانلود عضو یک کانال تلگرام شوند.
+مدیر می‌تونه قبل از دانلود، عضویت کاربرا تو یه کانال تلگرام رو اجبار کنه.
 
 ```text
 /forcejoin_on @your_channel
 ```
 
-برای غیرفعال‌سازی:
+برای غیرفعال کردن:
 
 ```text
 /forcejoin_off
 ```
 
-ربات باید داخل کانال مورد نظر عضو یا ادمین باشد تا Telegram اجازه بررسی عضویت را بدهد. مدیر ربات توسط عضویت اجباری محدود نمی‌شود.
+ربات باید تو کانال عضو یا ادمین باشه تا تلگرام بتونه عضویت رو بررسی کنه. کاربرای ادمین توسط عضویت اجباری مسدود نمی‌شن.
 
-## Cookies برای Instagram و YouTube
-
-بعضی لینک‌های Instagram یا YouTube بدون لاگین دانلود نمی‌شوند. کاربر مجاز می‌تواند cookies شخصی خودش را با فایل `cookies.txt` به ربات بدهد. رمز عبور ذخیره نمی‌شود؛ فقط فایل cookies روی سرور می‌ماند و با `/clearcookies` حذف می‌شود.
-
-برای ساخت cookies:
-
-1. در مرورگر وارد حساب خودت شو.
-2. cookies را با فرمت Netscape `cookies.txt` خروجی بگیر.
-3. فایل را به ربات بفرست.
-
-مدیر می‌تواند cookies عمومی ربات را با ارسال `cookies.txt` و کپشن `global` ذخیره کند و با دستور زیر حذف کند:
-
-```text
-/clearcookies global
-```
-
-## CAPTCHA و پیام "I'm not a robot"
-
-ربات CAPTCHA را دور نمی‌زند و روی پیام‌هایی مثل `I'm not a robot` کلیک خودکار نمی‌کند.
-
-اگر Instagram یا YouTube چنین چالشی خواست، کاربر باید در مرورگر خودش لاگین کند، چالش را دستی حل کند، cookies را خروجی بگیرد و فایل `cookies.txt` را به ربات بدهد. این روش خطاهای لاگین را کمتر می‌کند، اما تضمین نمی‌کند که سرویس مقصد هیچ‌وقت دوباره چالش امنیتی نخواهد.
-
-## مدیریت روی سرور
+## مدیریت سرویس
 
 ```bash
 sudo systemctl status telegram-downloader.service
@@ -124,28 +141,25 @@ sudo journalctl -u telegram-downloader.service -f
 sudo systemctl restart telegram-downloader.service
 ```
 
-برای آپدیت برنامه، dependencyها و restart سرویس:
+آپدیت ربات نصب‌شده:
 
 ```bash
-cd instagram-youtube-soundcloud-downloader
-python3 update.py
+python3 install.py
 ```
 
-برای حذف فقط سرویس systemd:
+حذف فقط سرویس systemd:
 
 ```bash
 python3 uninstall.py
 ```
 
-برای حذف سرویس و کل پوشه پروژه:
+حذف سرویس و پوشه پروژه:
 
 ```bash
 python3 remove.py
 ```
 
-`remove.py` قبل از حذف کامل از تو تایید جدی می‌گیرد.
-
-## اجرای دستی برای توسعه
+## اجرای توسعه
 
 ```bash
 cp .env.example .env
@@ -153,31 +167,87 @@ nano .env
 python3 run.py
 ```
 
-## اجرای تست‌ها
+## تست‌ها
 
 ```bash
 python3 -m unittest discover -s tests
 ```
 
+## Cookies برای Instagram و YouTube
+
+برخی لینک‌های Instagram یا YouTube ممکنه نیاز به لاگین داشته باشن. هر کاربر مجاز می‌تونه فایل `cookies.txt` شخصی خودش رو از داخل تلگرام آپلود کنه:
+
+۱. تو مرورگر لاگین کن.
+۲. cookies رو به فرمت Netscape `cookies.txt` خروجی بگیر.
+۳. فایل رو به ربات بفرست.
+
+اگه نام فایل واضح نیست، با این کپشن بفرست:
+
+```text
+/cookies
+```
+
+ربات cookies شخصی رو در `data/user_cookies/` ذخیره می‌کنه. رمز عبور ذخیره نمی‌شه؛ فقط فایل cookies روی سرور می‌ماند. کاربر می‌تونه با `/clearcookies` cookies خودش رو حذف کنه.
+
+مدیر می‌تونه cookies عمومی ربات رو با ارسال `cookies.txt` با کپشن `global` آپلود کنه:
+
+```text
+global
+```
+
+cookies عمومی مدیر در `data/cookies.txt` ذخیره می‌شه و با `/clearcookies global` حذف می‌شه. فایل‌های cookies حساس هستن و توسط Git نادیده گرفته می‌شن.
+
+## CAPTCHA و «من ربات نیستم»
+
+ربات CAPTCHA رو دور نمی‌زنه و به‌صورت خودکار روی تاییدهایی مثل «من ربات نیستم» کلیک نمی‌کنه.
+
+اگه Instagram یا YouTube چالش امنیتی خواست:
+
+۱. کاربر یا مدیر تو مرورگر دستی لاگین کنه.
+۲. چالش رو تو مرورگر دستی حل کنه.
+۳. cookies رو به فرمت Netscape `cookies.txt` خروجی بگیره.
+۴. فایل cookies رو به ربات آپلود کنه.
+
+این کار可靠性 لاگین رو بهتر می‌کنه ولی تضمین نمی‌کنه که یه سرویس دیگه چالش نخواد.
+
 ## تنظیمات `.env`
 
 ```env
-BOT_NAME=DownloaderBot
+BOT_NAME=Atieght Downloader
 BOT_TOKEN=123456789:replace-me
 ADMIN_ID=123456789
+SUPPORT_USERNAME=
+BOT_USERNAME=
 ALLOW_ALL_USERS=false
-MAX_UPLOAD_MB=49
+MAX_UPLOAD_MB=0
 PLAYLIST_LIMIT=20
-CONCURRENT_DOWNLOADS=1
+CONCURRENT_DOWNLOADS=100
 DOWNLOAD_DIR=downloads
 DATA_DIR=data
 LOG_DIR=logs
 COOKIES_FILE=
+ENABLE_YOUTUBE=true
+ENABLE_INSTAGRAM=true
+ENABLE_SOUNDCLOUD=true
+ENABLE_SONG_DETECTION=true
+SHAZAM_API_KEY=
+FORCE_IPV4=false
+HTTP_PROXY=
 ```
 
-`PLAYLIST_LIMIT` جلوی دانلود ناخواسته تعداد زیادی فایل از profile یا playlist را می‌گیرد.
+`ALLOW_ALL_USERS` فقط پیش‌فرض اولیه‌ست. بعد از نصب، مدیر می‌تونه با `/public_on`، `/public_off` یا پنل مدیر دسترسی عمومی رو تغییر بده.
 
-`MAX_UPLOAD_MB` باید با محدودیت ارسال Bot API محیط تو هماهنگ باشد.
+`PLAYLIST_LIMIT` سرور رو از دانلود profile یا playlistهای خیلی بزرگ محافظت می‌کنه.
+
+`MAX_UPLOAD_MB=0` یعنی ربات فایل‌ها رو بر اساس حجم مسدود نمی‌کنه. Telegram Bot API همچنان ممکنه فایل‌های بالاتر از حد واقعیش رو رد کنه.
+
+`SUPPORT_USERNAME` — اگه تنظیم بشه، دکمه پشتیبانی به `t.me/yourname` لینک می‌شه. وگرنه به `t.me/user?id=ADMIN_ID` برمی‌گرده.
+
+`BOT_USERNAME` — اگه تنظیم بشه، دکمه اشتراک‌گذاری به `t.me/your_bot` لینک می‌شه.
+
+`FORCE_IPV4` — می‌تونه با ارورهای YouTube HTTP 403 روی برخی سرورها یا VPNها کمک کنه.
+
+`HTTP_PROXY` — proxy اختیاری برای دانلودهای yt-dlp.
 
 ## لینک‌های نمونه
 
@@ -185,6 +255,8 @@ COOKIES_FILE=
 https://youtube.com/shorts/...
 https://www.youtube.com/watch?v=...
 https://youtu.be/...
+https://m.youtube.com/watch?v=...
+https://music.youtube.com/watch?v=...
 https://www.instagram.com/reel/...
 https://www.instagram.com/p/...
 https://www.instagram.com/username/
@@ -192,6 +264,11 @@ https://soundcloud.com/...
 https://on.soundcloud.com/...
 ```
 
-## سالم نگه داشتن دانلودها
+## سلامت دانلودها
 
-Instagram، YouTube و SoundCloud ممکن است ساختار یا محدودیت‌هایشان را تغییر دهند. برای سالم ماندن پروژه، همیشه `yt-dlp` را به‌روز نگه دار و از `python3 update.py` استفاده کن.
+Instagram، YouTube و SoundCloud ممکنه صفحه‌ها یا محدودیت‌هاتون رو تغییر بدن. ربات و `yt-dlp` رو آپدیت نگه دار:
+
+```bash
+cd instagram-youtube-soundcloud-downloader
+python3 install.py
+```

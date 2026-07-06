@@ -1,33 +1,55 @@
-# Telegram Downloader Bot
+# Atieght Downloader
 
 **Language:** [English](README.md) | [فارسی](README.fa.md) | [العربية](README.ar.md) | [Deutsch](README.de.md)
 
-A private, portfolio-ready Telegram bot for downloading supported media from YouTube, YouTube Shorts, Instagram, and SoundCloud.
+**Version 1.0.0**
 
-The project is written completely in Python and includes a simple Ubuntu installer. The bot stays inactive after installation until the admin enables it from inside Telegram.
+A private, portfolio-ready Telegram bot for downloading media from YouTube, YouTube Shorts, Instagram, and SoundCloud — with inline buttons, song detection, and an interactive installer.
+
+The project is written completely in Python and includes a simple Ubuntu installer with a feature checklist. The bot stays inactive after installation until the admin enables it from inside Telegram.
 
 > Legal note: This project is intended for testing, learning, and personal use. Before public or production use, review platform terms, copyright rules, privacy rules, and Telegram Bot API limits.
 
 ## Features
 
-- Automatic link detection for YouTube, `youtu.be`, Shorts, Instagram, and SoundCloud
+### Download
+- Automatic link detection for YouTube, `youtu.be`, Shorts, `m.youtube.com`, `music.youtube.com`, Instagram, and SoundCloud
 - Video, photo, audio, and document delivery through `yt-dlp`
 - Instagram posts, Reels, profiles, and many carousel posts
 - Instagram multi-item posts sent as Telegram albums/media groups
+- **Correct video dimensions** — Reels and Shorts keep their original aspect ratio (no more square videos)
+- YouTube video downloads prefer Telegram-friendly MP4 instead of WebM
+- SoundCloud: best audio quality for tracks under 15 minutes, cover art sent separately before the audio
 - Captions added to the first uploaded file
 - Long captions are shortened safely with a "Get full caption" button
+- Fallback to document upload if a file is too large for Telegram
+
+### User Experience
+- **Inline glass buttons** — after sending a link, the bot asks what you want: Video, Audio (MP3), or Find Song
+- **Reply keyboard menu** — persistent buttons at the bottom: Download, MP3, Status, Language, Share, Support
+- **Song detection** — recognize the song inside a video using Shazam (free, no API key required)
+- **Support button** — users can contact the admin directly from any error message
+- **Share button** — users can forward the bot to their friends
+- Real download progress (using yt-dlp progress hooks)
 - Per-user anti-spam guard: one active download and one new request every 5 seconds
-- Fake progress message from 0% to 90%, then 100% when the download finishes
-- `/mp3 <link>` for audio-only MP3 downloads
-- YouTube video downloads prefer Telegram-friendly MP4 instead of WebM
-- SoundCloud cover art is sent before the audio when available
 - Four-language bot UI: Persian, English, Arabic, and German
 - One-time user language selection, with manual changes through `/language`
+- Categorized error messages (no raw yt-dlp errors shown to users)
+
+### Admin
 - Admin activation from inside Telegram
 - Personal per-user `cookies.txt` upload and removal
 - Optional admin global `cookies.txt`
 - Admin-controlled forced channel subscription
 - Private-by-default access, with public mode controlled from the admin panel
+- Feature toggles: enable/disable YouTube, Instagram, SoundCloud, or Song Detection per bot
+
+### Installer
+- **Interactive feature checklist** (whiptail on Linux, text fallback elsewhere)
+- Atieght ASCII art banner
+- Asks for bot name, token, admin ID, support username, and bot username
+- Lets you choose which platforms and features to enable
+- Optional custom Shazam API key
 - Python installer and systemd service for Ubuntu
 - Update and full removal scripts for Ubuntu servers
 - Service logs in `logs/bot.log`
@@ -47,9 +69,14 @@ python3 install.py
 
 The installer asks for:
 
-- Bot name
+- Bot name (default: Atieght Downloader)
 - Bot token from BotFather
 - Admin numeric Telegram ID
+- Admin Telegram username for the support button (optional)
+- Bot username for the share button (optional)
+- Which platforms to enable (YouTube, Instagram, SoundCloud)
+- Whether to enable song detection (Shazam)
+- Optional custom Shazam API key
 
 After installation, open the bot in Telegram as the admin and send:
 
@@ -78,6 +105,17 @@ The bot will not download anything until it is activated.
 - `/forcejoin` shows forced subscription status
 - `/forcejoin_on @channel` enables forced subscription
 - `/forcejoin_off` disables forced subscription
+- `/support` shows the support button
+- `/share` shows a ready-to-forward share message
+- `/about` shows bot info and version
+
+## How It Works
+
+1. **Send a link** — paste a YouTube, Instagram, or SoundCloud link
+2. **Choose a format** — the bot shows inline buttons: Video, Audio (MP3), or Find Song
+3. **Get the result** — the bot downloads and sends the media with correct dimensions and thumbnail
+
+For SoundCloud, the bot downloads audio automatically (no buttons needed) and sends the cover art separately before the audio.
 
 ## Forced Subscription
 
@@ -175,9 +213,11 @@ This improves login reliability but cannot guarantee that a platform will never 
 ## `.env` Settings
 
 ```env
-BOT_NAME=DownloaderBot
+BOT_NAME=Atieght Downloader
 BOT_TOKEN=123456789:replace-me
 ADMIN_ID=123456789
+SUPPORT_USERNAME=
+BOT_USERNAME=
 ALLOW_ALL_USERS=false
 MAX_UPLOAD_MB=0
 PLAYLIST_LIMIT=20
@@ -186,6 +226,13 @@ DOWNLOAD_DIR=downloads
 DATA_DIR=data
 LOG_DIR=logs
 COOKIES_FILE=
+ENABLE_YOUTUBE=true
+ENABLE_INSTAGRAM=true
+ENABLE_SOUNDCLOUD=true
+ENABLE_SONG_DETECTION=true
+SHAZAM_API_KEY=
+FORCE_IPV4=false
+HTTP_PROXY=
 ```
 
 `ALLOW_ALL_USERS` is only the initial default. After installation, the admin can change public access with `/public_on`, `/public_off`, or the admin panel.
@@ -194,12 +241,22 @@ COOKIES_FILE=
 
 `MAX_UPLOAD_MB=0` means the app does not block files by size. Telegram Bot API can still reject files above its real upload limit.
 
+`SUPPORT_USERNAME` — if set, the support button links to `t.me/yourname`. Otherwise it falls back to `t.me/user?id=ADMIN_ID`.
+
+`BOT_USERNAME` — if set, the share button links to `t.me/your_bot`.
+
+`FORCE_IPV4` — can help with YouTube HTTP 403 errors on some servers or VPNs.
+
+`HTTP_PROXY` — optional proxy for yt-dlp downloads.
+
 ## Example Links
 
 ```text
 https://youtube.com/shorts/...
 https://www.youtube.com/watch?v=...
 https://youtu.be/...
+https://m.youtube.com/watch?v=...
+https://music.youtube.com/watch?v=...
 https://www.instagram.com/reel/...
 https://www.instagram.com/p/...
 https://www.instagram.com/username/

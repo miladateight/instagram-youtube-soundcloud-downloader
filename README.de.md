@@ -1,86 +1,125 @@
-# Telegram Downloader Bot
+# Atieght Downloader
 
 **Sprache:** [English](README.md) | [فارسی](README.fa.md) | [العربية](README.ar.md) | [Deutsch](README.de.md)
 
-Ein privater, portfolio-tauglicher Telegram-Bot zum Herunterladen unterstützter Medien von YouTube, YouTube Shorts, Instagram und SoundCloud.
+**Version 1.0.0**
 
-Das Projekt ist vollständig in Python geschrieben und enthält einen einfachen Ubuntu-Installer. Nach der Installation bleibt der Bot inaktiv, bis der Admin ihn in Telegram aktiviert.
+Ein privater, portfolio-tauglicher Telegram-Bot zum Herunterladen von Medien von YouTube, YouTube Shorts, Instagram und SoundCloud — mit Inline-Buttons, Liederkennung und einem interaktiven Installer.
 
-> Rechtlicher Hinweis: Dieses Projekt ist für Tests, Lernen und private Nutzung gedacht. Prüfe vor öffentlicher Nutzung die Plattformregeln, Urheberrechte, Datenschutzregeln und Telegram Bot API Limits.
+Das Projekt ist vollständig in Python geschrieben und enthält einen einfachen Ubuntu-Installer mit einer Feature-Checkliste. Der Bot bleibt nach der Installation inaktiv, bis der Administrator ihn aus Telegram heraus aktiviert.
+
+> Rechtlicher Hinweis: Dieses Projekt ist für Tests, Lernen und persönliche Nutzung gedacht. Vor öffentlicher oder produktiver Nutzung müssen die Plattform-Bedingungen, Urheberrechtsregeln, Datenschutzregeln und Telegram-Bot-API-Limits geprüft werden.
 
 ## Funktionen
 
-- Automatische Link-Erkennung für YouTube, `youtu.be`, Shorts, Instagram und SoundCloud
-- Download und Versand von Videos, Fotos, Audio und allgemeinen Dateien über `yt-dlp`
-- Unterstützung für Instagram-Posts, Reels, Profile und viele Carousel-Posts
-- Instagram-Posts mit mehreren Medien werden als Album/media group gesendet
-- Lange Captions werden gekürzt und per Button vollständig abrufbar gemacht
-- Vier Sprachversionen im Bot: Persisch, Englisch, Arabisch und Deutsch
-- Die Sprache wird nur beim ersten Start gefragt; spätere Änderungen laufen über `/language`
-- Admin-Aktivierung direkt in Telegram
-- Öffentlicher Zugriff kann mit `/public_on` und `/public_off` geöffnet oder geschlossen werden
-- Persönliche Cookies für erlaubte Nutzer und globale Cookies für den Admin
-- Admin-gesteuerte Pflichtmitgliedschaft in einem Kanal
-- Verbesserter SoundCloud-Versand mit Coverbild, Titel und Künstler
-- Installation, Update und vollständige Entfernung per Python-Skripten auf Ubuntu
-- Dauerbetrieb über systemd und Service-Logs in `logs/bot.log`
+### Download
+- Automatische Link-Erkennung für YouTube, `youtu.be`, Shorts, `m.youtube.com`, `music.youtube.com`, Instagram und SoundCloud
+- Video-, Foto-, Audio- und Dokumentlieferung über `yt-dlp`
+- Instagram-Posts, Reels, Profile und viele Carousel-Posts
+- Instagram-Multi-Item-Posts als Telegram-Alben/Mediagruppen gesendet
+- **Korrekte Videoabmessungen** — Reels und Shorts behalten ihr ursprüngliches Seitenverhältnis
+- YouTube-Video-Downloads bevorzugen Telegram-freundliches MP4 statt WebM
+- SoundCloud: beste Audioqualität für Tracks unter 15 Minuten, Cover-Art wird separat vor dem Audio gesendet
+- Beschriftung wird zur ersten hochgeladenen Datei hinzugefügt
+- Lange Beschriftungen werden sicher gekürzt mit einem "Vollständige Beschriftung abrufen"-Button
+- Fallback auf Dokument-Upload, wenn eine Datei zu groß für Telegram ist
 
-## Schnellinstallation Auf Ubuntu
+### Benutzererfahrung
+- **Inline-Glas-Buttons** — nach dem Senden eines Links fragt der Bot, was du willst: Video, Audio (MP3) oder Lied finden
+- **Reply-Keyboard-Menü** — dauerhafte Buttons unten: Download, MP3, Status, Sprache, Teilen, Support
+- **Liederkennung** — erkennt das Lied in einem Video mit Shazam (kostenlos, kein API-Schlüssel erforderlich)
+- **Support-Button** — Nutzer können den Administrator direkt aus jeder Fehlermeldung kontaktieren
+- **Teilen-Button** — Nutzer können den Bot an Freunde weiterleiten
+- Echter Download-Fortschritt (mit yt-dlp progress hooks)
+- Anti-Spam-Schutz pro Nutzer: ein aktiver Download und eine neue Anfrage alle 5 Sekunden
+- Bot-UI in vier Sprachen: Persisch, Englisch, Arabisch und Deutsch
+- Einmalige Sprachauswahl, mit manuellen Änderungen über `/language`
+- Kategorisierte Fehlermeldungen (keine rohen yt-dlp-Fehler werden Nutzern angezeigt)
+
+### Administrator
+- Aktivierung aus Telegram heraus
+- Persönliche `cookies.txt`-Uploads und -Entfernung pro Nutzer
+- Optionale globale `cookies.txt` für den Administrator
+- Vom Administrator gesteuerter erzwungener Kanal-Beitritt
+- Standardmäßig privater Zugriff, mit öffentlichem Modus gesteuert vom Admin-Panel
+- Feature-Toggles: YouTube, Instagram, SoundCloud oder Liederkennung aktivieren/deaktivieren
+
+### Installer
+- **Interaktive Feature-Checkliste** (whiptail auf Linux, Text-Fallback anderswo)
+- Atieght ASCII-Art-Banner
+- Fragt nach Bot-Name, Token, Admin-ID, Support-Username und Bot-Username
+- Auswahl welche Plattformen und Features aktiviert werden sollen
+- Optionaler benutzerdefinierter Shazam-API-Schlüssel
+- Python-Installer und systemd-Service für Ubuntu
+- Update- und vollständige Entfernungsskripte für Ubuntu-Server
+- Service-Logs in `logs/bot.log`
+
+## Schnellinstallation auf Ubuntu
 
 ```bash
-git clone https://github.com/miladateight/instagram-youtube-soundcloud-downloader.git && cd instagram-youtube-soundcloud-downloader && python3 install.py
+bash -c 'set -e; repo=instagram-youtube-soundcloud-downloader; if [ -f install.py ] && [ -d .git ]; then python3 install.py; elif [ -d "$repo/.git" ]; then cd "$repo" && python3 install.py; elif [ -e "$repo" ]; then echo "$repo already exists but is not a git checkout. Remove it first or choose another directory."; exit 1; else git clone https://github.com/miladateight/instagram-youtube-soundcloud-downloader.git "$repo" && cd "$repo" && python3 install.py; fi'
+```
+
+`python3 install.py` ist auch der Update-Befehl. Wenn `.env` bereits existiert, werden Abhängigkeiten aktualisiert, der neueste Code gezogen und der Service neu gestartet:
+
+```bash
+cd instagram-youtube-soundcloud-downloader
+python3 install.py
 ```
 
 Der Installer fragt nach:
 
-- Bot-Name
+- Bot-Name (Standard: Atieght Downloader)
 - Bot-Token von BotFather
-- Numerische Telegram-ID des Admins
+- Numerische Telegram-Admin-ID
+- Admin-Telegram-Username für den Support-Button (optional)
+- Bot-Username für den Teilen-Button (optional)
+- Welche Plattformen aktiviert werden sollen (YouTube, Instagram, SoundCloud)
+- Ob Liederkennung (Shazam) aktiviert werden soll
+- Optionaler benutzerdefinierter Shazam-API-Schlüssel
 
-Nach der Installation öffnest du den Bot in Telegram als Admin und sendest:
+Nach der Installation öffne den Bot in Telegram als Administrator und sende:
 
 ```text
 /activate
 ```
 
-Der Bot lädt nichts herunter, bis er aktiviert wurde.
+Der Bot lädt nichts herunter, bis er aktiviert ist.
 
-## Nutzerbefehle
+## Bot-Befehle
 
-- `/start` startet den Bot; wenn die Sprache bereits gespeichert ist, kommt nur eine kurze Nachricht
+- `/start` startet den Bot; Sprache wird nur einmal abgefragt
 - `/language` oder `/lang` ändert die Nutzersprache
-- `/help` zeigt Hilfe
-- `/id` zeigt die numerische Telegram-ID
-- `/status` zeigt den Bot-Status
-- `/cookies` erklärt den Upload persönlicher Cookies
-- `/clearcookies` entfernt gespeicherte persönliche Cookies
-
-## Admin-Befehle
-
+- `/help` zeigt den Hilfetext
+- `/id` zeigt die numerische Telegram-ID des Nutzers
+- `/mp3 <link>` sendet nur Audio als MP3
+- `/status` zeigt persönlichen Cookies-Status für Nutzer und vollen Status für den Admin
 - `/admin` öffnet das Admin-Panel
 - `/activate` aktiviert Downloads
 - `/deactivate` deaktiviert Downloads
-- `/public_on` öffnet den öffentlichen Zugriff
-- `/public_off` schließt den öffentlichen Zugriff
-- `/clearcookies global` entfernt globale Bot-Cookies
-- `/forcejoin` zeigt den Status der Pflichtmitgliedschaft
-- `/forcejoin_on @channel` aktiviert die Pflichtmitgliedschaft
-- `/forcejoin_off` deaktiviert die Pflichtmitgliedschaft
+- `/public_on` öffnet öffentlichen Zugriff
+- `/public_off` schließt öffentlichen Zugriff
+- `/cookies` erklärt, wie man Cookies hochlädt
+- `/clearcookies` entfernt persönliche Cookies
+- `/clearcookies global` entfernt globale Admin-Cookies
+- `/forcejoin` zeigt Status des erzwungenen Beitrags
+- `/forcejoin_on @channel` aktiviert erzwungenen Beitrag
+- `/forcejoin_off` deaktiviert erzwungenen Beitrag
+- `/support` zeigt den Support-Button
+- `/share` zeigt eine bereit-to-forward Teilen-Nachricht
+- `/about` zeigt Bot-Info und Version
 
-## Öffentlicher Zugriff
+## Wie es funktioniert
 
-Der Bot ist standardmäßig privat. Der Admin kann den öffentlichen Zugriff direkt im Bot öffnen oder schließen:
+1. **Link senden** — füge einen YouTube-, Instagram- oder SoundCloud-Link ein
+2. **Format wählen** — der Bot zeigt Inline-Buttons: Video, Audio (MP3) oder Lied finden
+3. **Ergebnis erhalten** — der Bot lädt herunter und sendet die Medien mit korrekten Abmessungen und Thumbnail
 
-```text
-/public_on
-/public_off
-```
+Für SoundCloud lädt der Bot Audio automatisch herunter (keine Buttons) und sendet die Cover-Art separat vor dem Audio.
 
-Wenn öffentlicher Zugriff geschlossen ist, können nur Admin und ausdrücklich erlaubte Nutzer den Bot verwenden.
+## Erzwungener Beitrag
 
-## Pflichtmitgliedschaft
-
-Der Admin kann Nutzer verpflichten, vor dem Download einem Telegram-Kanal beizutreten.
+Der Administrator kann verlangen, dass Nutzer einem Telegram-Kanal beitreten, bevor sie herunterladen.
 
 ```text
 /forcejoin_on @your_channel
@@ -92,31 +131,9 @@ Zum Deaktivieren:
 /forcejoin_off
 ```
 
-Der Bot muss Mitglied oder Admin im gewünschten Kanal sein, damit Telegram die Mitgliedschaft prüfen kann. Admin-Nutzer werden durch diese Prüfung nicht blockiert.
+Der Bot muss Mitglied oder Admin im erforderlichen Kanal sein, damit Telegram die Mitgliedschaft verifizieren kann. Admin-Nutzer werden nicht durch erzwungenen Beitrag blockiert.
 
-## Cookies Für Instagram Und YouTube
-
-Einige Instagram- oder YouTube-Links benötigen Login. Jeder erlaubte Nutzer kann persönliche Cookies als `cookies.txt` hochladen. Passwörter werden nicht gespeichert; nur die Cookies-Datei bleibt auf dem Server und kann mit `/clearcookies` entfernt werden.
-
-So erstellst du Cookies:
-
-1. Im Browser einloggen.
-2. Cookies im Netscape-Format `cookies.txt` exportieren.
-3. Die Datei an den Bot senden.
-
-Der Admin kann globale Bot-Cookies speichern, indem `cookies.txt` mit der Caption `global` hochgeladen wird. Entfernen geht mit:
-
-```text
-/clearcookies global
-```
-
-## CAPTCHA Und "I'm not a robot"
-
-Der Bot umgeht kein CAPTCHA und klickt nicht automatisch auf Prüfungen wie `I'm not a robot`.
-
-Wenn Instagram oder YouTube eine Sicherheitsprüfung verlangt, muss der Nutzer sich manuell im Browser anmelden, die Prüfung manuell lösen, Cookies im Netscape-Format exportieren und `cookies.txt` an den Bot senden. Das reduziert Login-Probleme, garantiert aber nicht, dass eine Plattform nie wieder eine Prüfung verlangt.
-
-## Server-Verwaltung
+## Service-Verwaltung
 
 ```bash
 sudo systemctl status telegram-downloader.service
@@ -124,28 +141,25 @@ sudo journalctl -u telegram-downloader.service -f
 sudo systemctl restart telegram-downloader.service
 ```
 
-Für App-Update, Dependency-Update und Service-Neustart:
+Bot aktualisieren:
 
 ```bash
-cd instagram-youtube-soundcloud-downloader
-python3 update.py
+python3 install.py
 ```
 
-Nur den systemd-Service entfernen:
+Nur den systemd-Service deinstallieren:
 
 ```bash
 python3 uninstall.py
 ```
 
-Service entfernen und den gesamten Projektordner löschen:
+Service entfernen und Projektverzeichnis löschen:
 
 ```bash
 python3 remove.py
 ```
 
-`remove.py` fragt vor der vollständigen Entfernung deutlich nach Bestätigung.
-
-## Manuell Für Entwicklung Starten
+## Entwicklungsausführung
 
 ```bash
 cp .env.example .env
@@ -159,25 +173,65 @@ python3 run.py
 python3 -m unittest discover -s tests
 ```
 
-## `.env` Einstellungen
+## Cookies für Instagram und YouTube
+
+Einige Instagram- oder YouTube-Links erfordern möglicherweise eine Anmeldung. Jeder erlaubte Nutzer kann eine persönliche `cookies.txt`-Datei aus Telegram heraus hochladen:
+
+1. Melde dich in einem Browser an.
+2. Exportiere Cookies im Netscape `cookies.txt`-Format.
+3. Sende die Datei an den Bot.
+
+Wenn der Dateiname nicht klar ist, sende sie mit dieser Beschriftung:
+
+```text
+/cookies
+```
+
+Der Bot speichert persönliche Cookies in `data/user_cookies/`. Passwörter werden nicht gespeichert; nur die exportierte Cookies-Datei bleibt auf dem Server. Ein Nutzer kann persönliche Cookies mit `/clearcookies` entfernen.
+
+Der Administrator kann globale Bot-Cookies hochladen, indem er `cookies.txt` mit der Beschriftung sendet:
+
+```text
+global
+```
+
+Globale Admin-Cookies werden in `data/cookies.txt` gespeichert und können mit `/clearcookies global` entfernt werden. Cookie-Dateien sind sensibel und werden von Git ignoriert.
+
+## CAPTCHA und "Ich bin kein Roboter"
+
+Der Bot umgeht kein CAPTCHA und klickt nicht automatisch auf Verifizierungsaufforderungen wie "Ich bin kein Roboter".
+
+Wenn Instagram oder YouTube eine Sicherheitsabfrage verlangt:
+
+1. Der Nutzer oder Administrator meldet sich manuell in einem Browser an.
+2. Die Abfrage wird manuell im Browser gelöst.
+3. Cookies werden im Netscape `cookies.txt`-Format exportiert.
+4. Die Cookies-Datei wird zum Bot hochgeladen.
+
+## `.env`-Einstellungen
 
 ```env
-BOT_NAME=DownloaderBot
+BOT_NAME=Atieght Downloader
 BOT_TOKEN=123456789:replace-me
 ADMIN_ID=123456789
+SUPPORT_USERNAME=
+BOT_USERNAME=
 ALLOW_ALL_USERS=false
-MAX_UPLOAD_MB=49
+MAX_UPLOAD_MB=0
 PLAYLIST_LIMIT=20
-CONCURRENT_DOWNLOADS=1
+CONCURRENT_DOWNLOADS=100
 DOWNLOAD_DIR=downloads
 DATA_DIR=data
 LOG_DIR=logs
 COOKIES_FILE=
+ENABLE_YOUTUBE=true
+ENABLE_INSTAGRAM=true
+ENABLE_SOUNDCLOUD=true
+ENABLE_SONG_DETECTION=true
+SHAZAM_API_KEY=
+FORCE_IPV4=false
+HTTP_PROXY=
 ```
-
-`PLAYLIST_LIMIT` schützt den Server vor sehr großen Profile- oder Playlist-Downloads.
-
-`MAX_UPLOAD_MB` sollte zu deiner Telegram Bot API Upload-Fähigkeit passen.
 
 ## Beispiel-Links
 
@@ -185,6 +239,8 @@ COOKIES_FILE=
 https://youtube.com/shorts/...
 https://www.youtube.com/watch?v=...
 https://youtu.be/...
+https://m.youtube.com/watch?v=...
+https://music.youtube.com/watch?v=...
 https://www.instagram.com/reel/...
 https://www.instagram.com/p/...
 https://www.instagram.com/username/
@@ -192,6 +248,11 @@ https://soundcloud.com/...
 https://on.soundcloud.com/...
 ```
 
-## Download-Support Stabil Halten
+## Download-Unterstützung gesund halten
 
-Instagram, YouTube und SoundCloud können Seiten oder Einschränkungen ändern. Halte `yt-dlp` aktuell und nutze für Updates `python3 update.py`.
+Instagram, YouTube und SoundCloud können ihre Seiten oder Einschränkungen ändern. Halte den Bot und `yt-dlp` aktualisiert:
+
+```bash
+cd instagram-youtube-soundcloud-downloader
+python3 install.py
+```
