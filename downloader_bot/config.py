@@ -35,12 +35,40 @@ class Settings:
     data_dir: Path
     log_dir: Path
     cookies_file: Path | None
+    enable_youtube: bool
+    enable_instagram: bool
+    enable_soundcloud: bool
+    enable_song_detection: bool
+    shazam_api_key: str | None
+    force_ipv4: bool
+    support_username: str | None
+    bot_username: str | None
+    http_proxy: str | None
 
     @property
     def max_upload_bytes(self) -> int:
         if self.max_upload_mb <= 0:
             return sys.maxsize
         return self.max_upload_mb * 1024 * 1024
+
+    def support_url(self) -> str:
+        if self.support_username:
+            return f"https://t.me/{self.support_username.lstrip('@')}"
+        return f"https://t.me/user?id={self.admin_id}"
+
+    def share_url(self) -> str | None:
+        if self.bot_username:
+            return f"https://t.me/{self.bot_username.lstrip('@')}"
+        return None
+
+    def platform_enabled(self, platform: str | None) -> bool:
+        if platform == "youtube":
+            return self.enable_youtube
+        if platform == "instagram":
+            return self.enable_instagram
+        if platform == "soundcloud":
+            return self.enable_soundcloud
+        return False
 
 
 def load_settings() -> Settings:
@@ -69,4 +97,13 @@ def load_settings() -> Settings:
         data_dir=Path(os.getenv("DATA_DIR", "data")).expanduser(),
         log_dir=Path(os.getenv("LOG_DIR", "logs")).expanduser(),
         cookies_file=cookies_file,
+        enable_youtube=_bool_env("ENABLE_YOUTUBE", True),
+        enable_instagram=_bool_env("ENABLE_INSTAGRAM", True),
+        enable_soundcloud=_bool_env("ENABLE_SOUNDCLOUD", True),
+        enable_song_detection=_bool_env("ENABLE_SONG_DETECTION", True),
+        shazam_api_key=(os.getenv("SHAZAM_API_KEY", "").strip() or None),
+        force_ipv4=_bool_env("FORCE_IPV4", False),
+        support_username=(os.getenv("SUPPORT_USERNAME", "").strip().lstrip("@") or None),
+        bot_username=(os.getenv("BOT_USERNAME", "").strip().lstrip("@") or None),
+        http_proxy=(os.getenv("HTTP_PROXY", "").strip() or None),
     )

@@ -7,6 +7,7 @@ import secrets
 import time
 from contextlib import suppress
 from pathlib import Path
+from typing import Any
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.enums import ChatAction
@@ -18,13 +19,17 @@ from aiogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
+    KeyboardButton,
     Message,
+    ReplyKeyboardMarkup,
+    ReplyKeyboardRemove,
 )
 
 from .config import Settings
 from .downloader import Downloader
 from .i18n import LANGUAGE_BUTTONS, SUPPORTED_LANGUAGES, normalize_language, t
 from .sender import TelegramSender
+from .song_recognizer import SongInfo, SongRecognizer
 from .state import BotState
 from .utils import (
     detect_platform,
@@ -43,9 +48,20 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
     dp = Dispatcher()
     state = BotState(settings.data_dir / "bot_state.sqlite3")
     downloader = Downloader(settings)
+    song_recognizer = SongRecognizer(settings) if settings.enable_song_detection else None
     user_locks: dict[int, asyncio.Lock] = {}
     last_download_started: dict[int, float] = {}
     user_cooldown_seconds = 5
+    cleanup_threshold = 1000
+
+    def cleanup_user_caches(user_id: int) -> None:
+        if len(last_download_started) > cleanup_threshold:
+            cutoff = time.monotonic() - user_cooldown_seconds * 2
+            stale = [uid for uid, ts in last_download_started.items() if ts < cutoff]
+            for uid in stale:
+                last_download_started.pop(uid, None)
+                if uid != user_id and uid not in last_download_started:
+                    user_locks.pop(uid, None)
 
     def message_user_id(message: Message) -> int:
         return message.from_user.id if message.from_user else 0
@@ -265,10 +281,14 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
 
         if any(token in lowered for token in ("captcha", "not a robot", "verify you are human")):
             return t(language, "captcha_error")
+        if any(token in lowered for token in ("empty media response", "login required", "login to", "log in to")):
+            return t(language, "login_error")
         if any(token in lowered for token in ("login", "cookie", "cookies", "sign in")):
             return t(language, "login_error")
         if any(token in lowered for token in ("private", "not available", "unavailable")):
             return t(language, "private_error")
+        if "404" in lowered or "not found" in lowered:
+            return t(language, "not_found_error")
         if any(
             token in lowered
             for token in (
@@ -301,25 +321,28 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
         platform: str,
         url: str,
         finished: asyncio.Event,
+        percent_holder: dict[str, int] | None = None,
     ) -> None:
-        percent = 0
+        last_percent = -1
         while not finished.is_set():
-            await edit_status(
-                status_message,
-                t(
-                    language,
-                    "progress",
-                    percent=percent,
-                    bar=progress_bar(percent),
-                    platform=platform,
-                    url=url,
-                ),
-            )
-            if percent < 90:
-                percent = min(90, percent + 10)
-                await asyncio.sleep(1.2)
-            else:
-                await asyncio.sleep(3)
+            raw = percent_holder.get("percent", 0) if percent_holder else 0
+            percent = min(95, raw) if raw else 0
+            if percent == 0:
+                percent = 5
+            if percent != last_percent:
+                await edit_status(
+                    status_message,
+                    t(
+                        language,
+                        "progress",
+                        percent=percent,
+                        bar=progress_bar(percent),
+                        platform=platform,
+                        url=url,
+                    ),
+                )
+                last_percent = percent
+            await asyncio.sleep(2)
         await edit_status(
             status_message,
             t(
@@ -331,6 +354,22 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
                 url=url,
             ),
         )
+
+    def make_progress_hook(percent_holder: dict[str, int]) -> Any:
+        def hook(d: dict[str, Any]) -> None:
+            if d.get("status") == "downloading":
+                total = d.get("total_bytes") or d.get("total_bytes_estimate") or 0
+                downloaded = d.get("downloaded_bytes") or 0
+                if total > 0:
+                    percent_holder["percent"] = int(downloaded * 100 / total)
+                elif d.get("fragment_count") and d.get("fragment_index"):
+                    fragments = d["fragment_count"]
+                    index = d["fragment_index"]
+                    if fragments > 0:
+                        percent_holder["percent"] = int(index * 100 / fragments)
+            elif d.get("status") == "finished":
+                percent_holder["percent"] = 100
+        return hook
 
     async def is_subscribed(bot: Bot, user_id: int) -> bool | None:
         if not state.is_force_join_enabled():
@@ -385,7 +424,14 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
             return
 
         if is_admin(message):
-            await message.answer(t(language, "start_ready"), reply_markup=main_keyboard(language, admin=True))
+            await message.answer(
+                t(language, "start_ready"),
+                reply_markup=main_keyboard(language, admin=True),
+            )
+            await message.answer(
+                t(language, "menu_hint"),
+                reply_markup=main_reply_keyboard(language),
+            )
             return
 
         if not state.is_active():
@@ -402,6 +448,7 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
                 return
 
         await message.answer(t(language, "start_ready"), reply_markup=main_keyboard(language))
+        await message.answer(t(language, "menu_hint"), reply_markup=main_reply_keyboard(language))
 
     @dp.message(CommandStart())
     async def start(message: Message, bot: Bot) -> None:
@@ -565,6 +612,48 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
                 reply_markup=main_keyboard(language),
             )
 
+    @dp.message(Command("support"))
+    async def support_command(message: Message) -> None:
+        language = message_language(message)
+        await message.answer(
+            t(language, "error_contact_support"),
+            reply_markup=support_keyboard(language),
+        )
+
+    @dp.message(Command("share"))
+    async def share_command(message: Message) -> None:
+        language = message_language(message)
+        share_url = settings.share_url()
+        if share_url:
+            await message.answer(t(language, "share_message", url=share_url))
+        else:
+            await message.answer(t(language, "share_message", url=""))
+
+    @dp.message(Command("about"))
+    async def about_command(message: Message) -> None:
+        language = message_language(message)
+        await message.answer(t(language, "about_message"))
+
+    @dp.callback_query(F.data == "support")
+    async def support_callback(callback: CallbackQuery) -> None:
+        language = callback_language(callback)
+        if callback.message:
+            await callback.message.answer(
+                t(language, "error_contact_support"),
+                reply_markup=support_keyboard(language),
+            )
+        await callback.answer()
+
+    @dp.callback_query(F.data == "share")
+    async def share_callback(callback: CallbackQuery) -> None:
+        language = callback_language(callback)
+        share_url = settings.share_url()
+        if callback.message:
+            await callback.message.answer(
+                t(language, "share_message", url=share_url or "")
+            )
+        await callback.answer()
+
     @dp.callback_query(F.data == "check_sub")
     async def check_subscription_callback(callback: CallbackQuery, bot: Bot) -> None:
         language = callback_language(callback)
@@ -710,6 +799,56 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
                 await callback.message.answer(caption[start : start + 3900])
         await callback.answer()
 
+    def url_token(url: str) -> str:
+        import hashlib
+        return hashlib.md5(url.encode("utf-8")).hexdigest()[:12]
+
+    def format_keyboard(language: str, url: str, platform: str, *, include_song: bool = True) -> InlineKeyboardMarkup:
+        token = url_token(url)
+        rows = [
+            [
+                InlineKeyboardButton(text=t(language, "button_video"), callback_data=f"dl:video:{token}"),
+                InlineKeyboardButton(text=t(language, "button_audio"), callback_data=f"dl:audio:{token}"),
+            ]
+        ]
+        if include_song:
+            rows.append(
+                [InlineKeyboardButton(text=t(language, "button_find_song"), callback_data=f"dl:song:{token}")]
+            )
+        return InlineKeyboardMarkup(inline_keyboard=rows)
+
+    def main_reply_keyboard(language: str) -> ReplyKeyboardMarkup:
+        rows = [
+            [
+                KeyboardButton(text=t(language, "button_download_menu")),
+                KeyboardButton(text=t(language, "button_mp3_menu")),
+            ],
+            [
+                KeyboardButton(text=t(language, "button_status_menu")),
+                KeyboardButton(text=t(language, "button_language_menu")),
+            ],
+            [
+                KeyboardButton(text=t(language, "button_share_menu")),
+                KeyboardButton(text=t(language, "button_support_menu")),
+            ],
+        ]
+        return ReplyKeyboardMarkup(keyboard=rows, resize_keyboard=True, is_persistent=True)
+
+    def support_keyboard(language: str) -> InlineKeyboardMarkup:
+        rows = [
+            [InlineKeyboardButton(text=t(language, "button_support"), url=settings.support_url())]
+        ]
+        if settings.share_url():
+            rows.append([InlineKeyboardButton(text=t(language, "button_share"), url=settings.share_url())])
+        return InlineKeyboardMarkup(inline_keyboard=rows)
+
+    def error_keyboard(language: str) -> InlineKeyboardMarkup:
+        return InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text=t(language, "button_support"), url=settings.support_url())]
+            ]
+        )
+
     async def process_downloads(
         message: Message,
         bot: Bot,
@@ -732,6 +871,7 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
             await message.answer(t(language, "download_cooldown", seconds=remaining))
             return
         last_download_started[user_id] = now
+        cleanup_user_caches(user_id)
 
         async with lock:
             if len(urls) > 1:
@@ -752,13 +892,22 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
                 )
                 result = None
                 finished = asyncio.Event()
+                percent_holder: dict[str, int] = {"percent": 0}
                 progress_task = asyncio.create_task(
-                    animate_progress(status_message, language, platform_name, url_label, finished)
+                    animate_progress(status_message, language, platform_name, url_label, finished, percent_holder)
                 )
                 try:
-                    await bot.send_chat_action(message.chat.id, ChatAction.UPLOAD_DOCUMENT)
+                    await bot.send_chat_action(
+                        message.chat.id,
+                        ChatAction.UPLOAD_VIDEO if not audio_only else ChatAction.UPLOAD_DOCUMENT,
+                    )
                     cookies_path = active_cookies_path(user_id)
-                    result = await downloader.download(url, cookies_path, audio_only=audio_only)
+                    result = await downloader.download(
+                        url,
+                        cookies_path,
+                        audio_only=audio_only,
+                        progress_callback=make_progress_hook(percent_holder),
+                    )
                     finished.set()
                     await progress_task
                     await status_message.edit_text(t(language, "uploading"))
@@ -776,11 +925,172 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
                         await progress_task
                     logging.exception("Download failed for %s", url)
                     await status_message.edit_text(
-                        t(language, "download_failed", error=friendly_error(exc, language))
+                        t(language, "download_failed", error=friendly_error(exc, language)),
+                        reply_markup=error_keyboard(language),
                     )
                 finally:
                     if result is not None:
                         Downloader.cleanup(result.workdir)
+
+    async def process_download_from_callback(
+        callback: CallbackQuery,
+        bot: Bot,
+        url: str,
+        *,
+        audio_only: bool = False,
+        token: str = "",
+    ) -> None:
+        language = callback_language(callback)
+        user_id = callback_user_id(callback)
+        platform = detect_platform(url) or "unknown"
+        platform_name = platform_label(platform)
+        url_label = short_url_label(url)
+
+        now = time.monotonic()
+        remaining = math.ceil((last_download_started.get(user_id, 0) + user_cooldown_seconds) - now)
+        lock = user_locks.setdefault(user_id, asyncio.Lock())
+        if lock.locked():
+            await callback.answer(t(language, "download_already_running"), show_alert=True)
+            return
+        if remaining > 0:
+            await callback.answer(t(language, "download_cooldown", seconds=remaining), show_alert=True)
+            return
+        last_download_started[user_id] = now
+        cleanup_user_caches(user_id)
+
+        async with lock:
+            chat_id = callback.message.chat.id if callback.message else 0
+            status_message = await bot.send_message(
+                chat_id,
+                t(
+                    language,
+                    "starting_audio_download" if audio_only else "starting_video_download",
+                    platform=platform_name,
+                ),
+            )
+            result = None
+            finished = asyncio.Event()
+            percent_holder: dict[str, int] = {"percent": 0}
+            progress_task = asyncio.create_task(
+                animate_progress(status_message, language, platform_name, url_label, finished, percent_holder)
+            )
+            try:
+                await bot.send_chat_action(
+                    chat_id,
+                    ChatAction.UPLOAD_VIDEO if not audio_only else ChatAction.UPLOAD_DOCUMENT,
+                )
+                cookies_path = active_cookies_path(user_id)
+                result = await downloader.download(
+                    url,
+                    cookies_path,
+                    audio_only=audio_only,
+                    progress_callback=make_progress_hook(percent_holder),
+                )
+                finished.set()
+                await progress_task
+                await status_message.edit_text(t(language, "uploading"))
+                sender = TelegramSender(bot, settings, state)
+                await sender.send_result(
+                    chat_id,
+                    result,
+                    language,
+                    secrets.token_urlsafe(8),
+                )
+                with suppress(Exception):
+                    await status_message.delete()
+                if token:
+                    state.delete_pending_link(token)
+            except Exception as exc:
+                finished.set()
+                with suppress(Exception):
+                    await progress_task
+                logging.exception("Callback download failed for %s", url)
+                await status_message.edit_text(
+                    t(language, "download_failed", error=friendly_error(exc, language)),
+                    reply_markup=error_keyboard(language),
+                )
+            finally:
+                if result is not None:
+                    Downloader.cleanup(result.workdir)
+
+    async def process_song_detection_from_callback(
+        callback: CallbackQuery,
+        bot: Bot,
+        url: str,
+        *,
+        token: str = "",
+    ) -> None:
+        language = callback_language(callback)
+        user_id = callback_user_id(callback)
+        platform = detect_platform(url) or "unknown"
+        platform_name = platform_label(platform)
+        url_label = short_url_label(url)
+
+        if song_recognizer is None:
+            await callback.answer()
+            await process_download_from_callback(callback, bot, url, audio_only=True, token=token)
+            return
+
+        now = time.monotonic()
+        remaining = math.ceil((last_download_started.get(user_id, 0) + user_cooldown_seconds) - now)
+        lock = user_locks.setdefault(user_id, asyncio.Lock())
+        if lock.locked():
+            await callback.answer(t(language, "download_already_running"), show_alert=True)
+            return
+        if remaining > 0:
+            await callback.answer(t(language, "download_cooldown", seconds=remaining), show_alert=True)
+            return
+        last_download_started[user_id] = now
+        cleanup_user_caches(user_id)
+
+        async with lock:
+            chat_id = callback.message.chat.id if callback.message else 0
+            status_message = await bot.send_message(
+                chat_id,
+                t(language, "song_searching", platform=platform_name, url=url_label),
+            )
+
+            result = None
+            song_info = None
+            try:
+                await bot.send_chat_action(chat_id, ChatAction.UPLOAD_DOCUMENT)
+                cookies_path = active_cookies_path(user_id)
+                song_info, result = await song_recognizer.recognize(url, cookies_path)
+
+                if song_info is None:
+                    await status_message.edit_text(t(language, "song_not_found"))
+                    sender = TelegramSender(bot, settings, state)
+                    await sender.send_result(
+                        chat_id,
+                        result,
+                        language,
+                        secrets.token_urlsafe(8),
+                    )
+                    with suppress(Exception):
+                        await status_message.delete()
+                else:
+                    text_parts = [t(language, "song_found")]
+                    if song_info.title:
+                        text_parts.append(t(language, "song_title", title=song_info.title))
+                    if song_info.artist:
+                        text_parts.append(t(language, "song_artist", artist=song_info.artist))
+                    if song_info.album:
+                        text_parts.append(t(language, "song_album", album=song_info.album))
+                    await status_message.edit_text("\n".join(text_parts))
+                    if song_info.cover_url:
+                        with suppress(Exception):
+                            await bot.send_photo(chat_id, photo=song_info.cover_url)
+                if token:
+                    state.delete_pending_link(token)
+            except Exception as exc:
+                logging.exception("Song detection failed for %s", url)
+                await status_message.edit_text(
+                    t(language, "download_failed", error=friendly_error(exc, language)),
+                    reply_markup=error_keyboard(language),
+                )
+            finally:
+                if result is not None:
+                    Downloader.cleanup(result.workdir)
 
     @dp.message(Command("mp3", "audio"))
     async def mp3_command(message: Message, bot: Bot) -> None:
@@ -793,7 +1103,12 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
         if not urls:
             await message.answer(t(language, "unsupported_links"))
             return
-        await process_downloads(message, bot, urls, audio_only=True)
+        enabled_urls = [url for url in urls if settings.platform_enabled(detect_platform(url))]
+        if not enabled_urls:
+            disabled_platform = detect_platform(urls[0])
+            await message.answer(t(language, "platform_disabled", platform=platform_label(disabled_platform)))
+            return
+        await process_downloads(message, bot, enabled_urls, audio_only=True)
 
     @dp.message(F.text)
     async def handle_text(message: Message, bot: Bot) -> None:
@@ -801,7 +1116,47 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
         if await reject_if_needed(message, bot):
             return
 
-        urls = extract_urls(message.text or "")
+        text = message.text or ""
+        download_label = t(language, "button_download_menu")
+        mp3_label = t(language, "button_mp3_menu")
+        status_label = t(language, "button_status_menu")
+        language_label = t(language, "button_language_menu")
+        share_label = t(language, "button_share_menu")
+        support_label = t(language, "button_support_menu")
+
+        if text.strip() == download_label:
+            await message.answer(
+                t(language, "send_supported_link"),
+                reply_markup=main_keyboard(language, admin=is_admin(message)),
+            )
+            return
+        if text.strip() == mp3_label:
+            await message.answer(t(language, "mp3_help"), reply_markup=main_keyboard(language, admin=is_admin(message)))
+            return
+        if text.strip() == status_label:
+            if is_admin(message):
+                await message.answer(status_text(language), reply_markup=admin_keyboard(language))
+            else:
+                await message.answer(
+                    user_status_text(message_user_id(message), language),
+                    reply_markup=main_keyboard(language),
+                )
+            return
+        if text.strip() == language_label:
+            await message.answer(t(language, "choose_language"), reply_markup=language_keyboard())
+            return
+        if text.strip() == share_label:
+            share_url = settings.share_url()
+            await message.answer(t(language, "share_message", url=share_url or ""))
+            return
+        if text.strip() == support_label:
+            await message.answer(
+                t(language, "error_contact_support"),
+                reply_markup=support_keyboard(language),
+            )
+            return
+
+        urls = extract_urls(text)
         if not urls:
             await message.answer(t(language, "send_supported_link"), reply_markup=main_keyboard(language, admin=is_admin(message)))
             return
@@ -813,7 +1168,64 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
             if not urls:
                 return
 
+        disabled = [url for url in urls if not settings.platform_enabled(detect_platform(url))]
+        if disabled:
+            disabled_platform = detect_platform(disabled[0])
+            await message.answer(
+                t(language, "platform_disabled", platform=platform_label(disabled_platform)),
+            )
+            urls = [url for url in urls if settings.platform_enabled(detect_platform(url))]
+            if not urls:
+                return
+
+        user_id = message_user_id(message)
+        single_url = urls[0] if len(urls) == 1 else None
+
+        if single_url:
+            platform = detect_platform(single_url)
+            if platform == "soundcloud":
+                await process_downloads(message, bot, urls)
+                return
+
+            token = url_token(single_url)
+            state.save_pending_link(user_id, single_url, platform or "unknown", token)
+            include_song = bool(platform in {"youtube", "instagram"} and settings.enable_song_detection)
+            keyboard = format_keyboard(language, single_url, platform or "", include_song=include_song)
+            await message.answer(
+                t(language, "choose_format", platform=platform_label(platform), url=short_url_label(single_url)),
+                reply_markup=keyboard,
+            )
+            return
+
         await process_downloads(message, bot, urls)
+
+    @dp.callback_query(F.data.startswith("dl:"))
+    async def download_choice_callback(callback: CallbackQuery, bot: Bot) -> None:
+        language = callback_language(callback)
+        parts = callback.data.split(":", 2)
+        if len(parts) < 2:
+            await callback.answer()
+            return
+        action = parts[1]
+        token = parts[2] if len(parts) > 2 else ""
+
+        pending = state.get_pending_link(token)
+        if not pending:
+            await callback.answer(t(language, "link_expired"), show_alert=True)
+            return
+        url, _platform = pending
+
+        if action == "video":
+            await callback.answer()
+            await process_download_from_callback(callback, bot, url, audio_only=False, token=token)
+        elif action == "audio":
+            await callback.answer()
+            await process_download_from_callback(callback, bot, url, audio_only=True, token=token)
+        elif action == "song":
+            await callback.answer()
+            await process_song_detection_from_callback(callback, bot, url, token=token)
+        else:
+            await callback.answer()
 
     return dp
 

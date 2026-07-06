@@ -8,6 +8,7 @@ dependencies = [
     "aiogram>=3.7,<4",
     "python-dotenv>=1.0,<2",
     "yt-dlp>=2025.1.1",
+    "shazamio>=0.8,<1",
 ]
 
 [project.scripts]

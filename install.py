@@ -12,6 +12,13 @@ from pathlib import Path
 PROJECT_DIR = Path(__file__).resolve().parent
 SERVICE_NAME = "telegram-downloader.service"
 
+FEATURE_DEFAULTS = {
+    "ENABLE_YOUTUBE": True,
+    "ENABLE_INSTAGRAM": True,
+    "ENABLE_SOUNDCLOUD": True,
+    "ENABLE_SONG_DETECTION": True,
+}
+
 
 def run(command: list[str], *, check: bool = True) -> subprocess.CompletedProcess[str]:
     print("+ " + " ".join(command))
@@ -75,7 +82,89 @@ def create_virtualenv() -> Path:
     return python_bin
 
 
-def write_env(bot_name: str, bot_token: str, admin_id: str) -> None:
+def whiptail_available() -> bool:
+    return sys.stdin.isatty() and bool(shutil.which("whiptail"))
+
+
+def feature_checklist_whiptail() -> dict[str, bool]:
+    items = [
+        ("ENABLE_YOUTUBE", "YouTube (videos, shorts, mp3, song detection)", FEATURE_DEFAULTS["ENABLE_YOUTUBE"]),
+        ("ENABLE_INSTAGRAM", "Instagram (reels, posts, mp3, song detection)", FEATURE_DEFAULTS["ENABLE_INSTAGRAM"]),
+        ("ENABLE_SOUNDCLOUD", "SoundCloud (high quality audio + cover art)", FEATURE_DEFAULTS["ENABLE_SOUNDCLOUD"]),
+        ("ENABLE_SONG_DETECTION", "Song detection via Shazam (Find song button)", FEATURE_DEFAULTS["ENABLE_SONG_DETECTION"]),
+    ]
+    args = ["whiptail", "--title", "Select features to enable", "--checklist",
+            "Use SPACE to toggle. ENTER to confirm.", "0", "0", "0"]
+    for key, label, default in items:
+        args.append(label)
+        args.append(key)
+        args.append("ON" if default else "OFF")
+
+    result = subprocess.run(args, stderr=subprocess.PIPE, text=True)
+    selected = set(result.stderr.strip().split()) if result.returncode == 0 else set()
+    chosen = {}
+    for key, label, default in items:
+        chosen[key] = key in selected if selected else default
+    if not any(chosen.values()):
+        print("No features selected. Aborting.")
+        raise SystemExit(1)
+    return chosen
+
+
+def feature_checklist_text() -> dict[str, bool]:
+    print("\n=== Feature selection ===")
+    print("Type y/n for each feature. Just press Enter to accept the default.\n")
+    items = [
+        ("ENABLE_YOUTUBE", "YouTube (videos, shorts, mp3, song detection)", FEATURE_DEFAULTS["ENABLE_YOUTUBE"]),
+        ("ENABLE_INSTAGRAM", "Instagram (reels, posts, mp3, song detection)", FEATURE_DEFAULTS["ENABLE_INSTAGRAM"]),
+        ("ENABLE_SOUNDCLOUD", "SoundCloud (high quality audio + cover art)", FEATURE_DEFAULTS["ENABLE_SOUNDCLOUD"]),
+        ("ENABLE_SONG_DETECTION", "Song detection via Shazam (Find song button)", FEATURE_DEFAULTS["ENABLE_SONG_DETECTION"]),
+    ]
+    chosen: dict[str, bool] = {}
+    for key, label, default in items:
+        hint = "Y/n" if default else "y/N"
+        while True:
+            answer = input(f"{label} [{hint}]: ").strip().lower()
+            if not answer:
+                chosen[key] = default
+                break
+            if answer in {"y", "yes"}:
+                chosen[key] = True
+                break
+            if answer in {"n", "no"}:
+                chosen[key] = False
+                break
+            print("Please answer y or n.")
+    if not any(chosen.values()):
+        print("No features selected. Aborting.")
+        raise SystemExit(1)
+    return chosen
+
+
+def collect_features() -> dict[str, bool]:
+    if whiptail_available():
+        return feature_checklist_whiptail()
+    return feature_checklist_text()
+
+
+def prompt_shazam_key(features: dict[str, bool]) -> str:
+    if not features.get("ENABLE_SONG_DETECTION"):
+        return ""
+    print("\n=== Shazam API key (optional) ===")
+    print("The bot uses the free shazamio library by default. If you have a custom")
+    print("Shazam API key, paste it here. Otherwise just press Enter to use the free mode.")
+    return prompt("Shazam API key", required=False, default="")
+
+
+def write_env(
+    bot_name: str,
+    bot_token: str,
+    admin_id: str,
+    features: dict[str, bool],
+    shazam_api_key: str,
+    support_username: str = "",
+    bot_username: str = "",
+) -> None:
     download_dir = PROJECT_DIR / "downloads"
     data_dir = PROJECT_DIR / "data"
     log_dir = PROJECT_DIR / "logs"
@@ -84,24 +173,29 @@ def write_env(bot_name: str, bot_token: str, admin_id: str) -> None:
     data_dir.mkdir(parents=True, exist_ok=True)
     log_dir.mkdir(parents=True, exist_ok=True)
 
-    env_text = "\n".join(
-        [
-            f"BOT_NAME={env_quote(bot_name)}",
-            f"BOT_TOKEN={env_quote(bot_token)}",
-            f"ADMIN_ID={admin_id}",
-            "ALLOW_ALL_USERS=false",
-            "MAX_UPLOAD_MB=0",
-            "PLAYLIST_LIMIT=20",
-            "CONCURRENT_DOWNLOADS=100",
-            f"DOWNLOAD_DIR={env_quote(str(download_dir))}",
-            f"DATA_DIR={env_quote(str(data_dir))}",
-            f"LOG_DIR={env_quote(str(log_dir))}",
-            "COOKIES_FILE=",
-            "",
-        ]
-    )
+    lines = [
+        f"BOT_NAME={env_quote(bot_name)}",
+        f"BOT_TOKEN={env_quote(bot_token)}",
+        f"ADMIN_ID={admin_id}",
+        f"SUPPORT_USERNAME={env_quote(support_username.lstrip('@'))}",
+        f"BOT_USERNAME={env_quote(bot_username.lstrip('@'))}",
+        "ALLOW_ALL_USERS=false",
+        "MAX_UPLOAD_MB=0",
+        "PLAYLIST_LIMIT=20",
+        "CONCURRENT_DOWNLOADS=100",
+        f"DOWNLOAD_DIR={env_quote(str(download_dir))}",
+        f"DATA_DIR={env_quote(str(data_dir))}",
+        f"LOG_DIR={env_quote(str(log_dir))}",
+        "COOKIES_FILE=",
+        f"ENABLE_YOUTUBE={'true' if features.get('ENABLE_YOUTUBE') else 'false'}",
+        f"ENABLE_INSTAGRAM={'true' if features.get('ENABLE_INSTAGRAM') else 'false'}",
+        f"ENABLE_SOUNDCLOUD={'true' if features.get('ENABLE_SOUNDCLOUD') else 'false'}",
+        f"ENABLE_SONG_DETECTION={'true' if features.get('ENABLE_SONG_DETECTION') else 'false'}",
+        f"SHAZAM_API_KEY={env_quote(shazam_api_key)}",
+        "",
+    ]
     env_path = PROJECT_DIR / ".env"
-    env_path.write_text(env_text, encoding="utf-8")
+    env_path.write_text("\n".join(lines), encoding="utf-8")
     try:
         env_path.chmod(0o600)
     except OSError:
@@ -141,7 +235,7 @@ def install_service(python_bin: Path) -> None:
 
 def update_existing_installation() -> None:
     print("Existing .env found. Running update mode.")
-    print("Use python3 install.py --reconfigure if you want to enter a new token/admin.")
+    print("Use python3 install.py --reconfigure if you want to enter a new token/admin or change features.")
     print()
 
     install_system_packages()
@@ -156,8 +250,39 @@ def update_existing_installation() -> None:
     print(f"Logs:   sudo journalctl -u {SERVICE_NAME} -f")
 
 
+def print_summary(features: dict[str, bool], shazam_key: bool) -> None:
+    print("\n=== Installation summary ===")
+    for key, label in [
+        ("ENABLE_YOUTUBE", "YouTube"),
+        ("ENABLE_INSTAGRAM", "Instagram"),
+        ("ENABLE_SOUNDCLOUD", "SoundCloud"),
+        ("ENABLE_SONG_DETECTION", "Song detection (Shazam)"),
+    ]:
+        status = "ON" if features.get(key) else "OFF"
+        print(f"  {label}: {status}")
+    if features.get("ENABLE_SONG_DETECTION"):
+        print(f"  Shazam API key: {'custom' if shazam_key else 'free (shazamio)'}")
+    print()
+
+
+def print_banner() -> None:
+    banner = """
+  ___  _       _       _     _
+ / _ \\| |     (_)     | |   | |
+/ /_\\ \\ |_ ___ _  __ _| |__ | |_
+|  _  | __/ _ \\ |/ _` | '_ \\| __|
+| | | | ||  __/ | (_| | | | | |_
+\\_| |_/\\__\\___|_|\\__, |_| |_|\\__|
+                  __/ |
+                 |___/
+
+    Telegram Downloader Bot  |  By Milad Ateight
+"""
+    print(banner)
+
+
 def main() -> None:
-    print("Telegram Downloader installer")
+    print_banner()
     print("The bot will stay inactive until the admin sends /activate in Telegram.")
     print()
 
@@ -165,15 +290,23 @@ def main() -> None:
         update_existing_installation()
         return
 
-    bot_name = prompt("Bot name", default="DownloaderBot")
-    bot_token = prompt("Bot token")
+    print("=== Bot configuration ===")
+    bot_name = prompt("Bot name", default="Atieght Downloader")
+    bot_token = prompt("Bot token (from BotFather)")
     admin_id = prompt("Admin numeric Telegram ID")
     if not admin_id.isdigit():
         raise SystemExit("Admin ID must be numeric.")
 
+    support_username = prompt("Admin Telegram username for support (e.g. @yourname, optional)", required=False, default="")
+    bot_username = prompt("Bot username (e.g. @atieght_bot, for share button)", required=False, default="")
+
+    features = collect_features()
+    shazam_api_key = prompt_shazam_key(features)
+    print_summary(features, bool(shazam_api_key))
+
     install_system_packages()
     python_bin = create_virtualenv()
-    write_env(bot_name, bot_token, admin_id)
+    write_env(bot_name, bot_token, admin_id, features, shazam_api_key, support_username, bot_username)
     install_service(python_bin)
 
     print()

@@ -6,8 +6,8 @@ from urllib.parse import urlparse
 
 
 URL_RE = re.compile(
-    r"(?:(?:https?://)?(?:www\.)?"
-    r"(?:youtube\.com|youtu\.be|instagram\.com|instagr\.am|soundcloud\.com|on\.soundcloud\.com)"
+    r"(?:(?:https?://)?(?:[a-z0-9-]+\.)?"
+    r"(?:youtube\.com|youtu\.be|music\.youtube\.com|instagram\.com|instagr\.am|soundcloud\.com|on\.soundcloud\.com)"
     r"/[^\s<>()\"']+)",
     re.IGNORECASE,
 )

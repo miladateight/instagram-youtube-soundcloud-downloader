@@ -1,17 +1,31 @@
 from __future__ import annotations
 
+import time
 import sqlite3
+from contextlib import suppress
 from pathlib import Path
+
+
+PENDING_LINK_TTL_SECONDS = 5 * 60
 
 
 class BotState:
     def __init__(self, db_path: Path) -> None:
         self.db_path = db_path
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._connections: list[sqlite3.Connection] = []
         self._initialize()
 
     def _connect(self) -> sqlite3.Connection:
-        return sqlite3.connect(self.db_path)
+        connection = sqlite3.connect(self.db_path)
+        self._connections.append(connection)
+        return connection
+
+    def close(self) -> None:
+        for connection in self._connections:
+            with suppress(Exception):
+                connection.close()
+        self._connections.clear()
 
     def _initialize(self) -> None:
         with self._connect() as connection:
@@ -25,6 +39,17 @@ class BotState:
             )
             connection.execute(
                 "INSERT OR IGNORE INTO bot_state(key, value) VALUES('active', 'false')"
+            )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS pending_links (
+                    token TEXT PRIMARY KEY,
+                    user_id INTEGER NOT NULL,
+                    url TEXT NOT NULL,
+                    platform TEXT NOT NULL,
+                    created_at REAL NOT NULL
+                )
+                """
             )
 
     def get(self, key: str, default: str | None = None) -> str | None:
@@ -113,3 +138,41 @@ class BotState:
 
     def clear_force_join_chat(self) -> None:
         self.delete("force_join_chat")
+
+    def save_pending_link(self, user_id: int, url: str, platform: str, token: str) -> None:
+        with self._connect() as connection:
+            connection.execute(
+                "DELETE FROM pending_links WHERE user_id = ? AND url = ?",
+                (user_id, url),
+            )
+            connection.execute(
+                """
+                INSERT INTO pending_links(token, user_id, url, platform, created_at)
+                VALUES(?, ?, ?, ?, ?)
+                """,
+                (token, user_id, url, platform, time.time()),
+            )
+
+    def get_pending_link(self, token: str) -> tuple[str, str] | None:
+        self._purge_pending_links()
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT url, platform FROM pending_links WHERE token = ?",
+                (token,),
+            ).fetchone()
+        return (str(row[0]), str(row[1])) if row else None
+
+    def delete_pending_link(self, token: str) -> None:
+        with self._connect() as connection:
+            connection.execute(
+                "DELETE FROM pending_links WHERE token = ?",
+                (token,),
+            )
+
+    def _purge_pending_links(self) -> None:
+        cutoff = time.time() - PENDING_LINK_TTL_SECONDS
+        with self._connect() as connection:
+            connection.execute(
+                "DELETE FROM pending_links WHERE created_at < ?",
+                (cutoff,),
+            )

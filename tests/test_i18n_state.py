@@ -57,6 +57,26 @@ class StateTests(unittest.TestCase):
             self.assertIsNone(state.user_cookies_path(100))
             self.assertFalse(state.is_force_join_enabled())
             self.assertIsNone(state.force_join_chat())
+            state.close()
+
+    def test_pending_link_roundtrip(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            state = BotState(Path(directory) / "state.sqlite3")
+            state.save_pending_link(100, "https://youtube.com/watch?v=abc", "youtube", "tok123")
+            pending = state.get_pending_link("tok123")
+            self.assertIsNotNone(pending)
+            self.assertEqual(pending[0], "https://youtube.com/watch?v=abc")
+            self.assertEqual(pending[1], "youtube")
+
+            state.delete_pending_link("tok123")
+            self.assertIsNone(state.get_pending_link("tok123"))
+            state.close()
+
+    def test_pending_link_unknown_token_returns_none(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            state = BotState(Path(directory) / "state.sqlite3")
+            self.assertIsNone(state.get_pending_link("nonexistent"))
+            state.close()
 
             del state
             gc.collect()

@@ -25,11 +25,27 @@ class UrlDetectionTests(unittest.TestCase):
             ],
         )
 
+    def test_extracts_mobile_and_music_youtube_links(self) -> None:
+        urls = extract_urls("check https://m.youtube.com/watch?v=abc and https://music.youtube.com/watch?v=def")
+        self.assertIn("https://m.youtube.com/watch?v=abc", urls)
+        self.assertIn("https://music.youtube.com/watch?v=def", urls)
+
+    def test_extracts_mobile_instagram_links(self) -> None:
+        urls = extract_urls("https://m.instagram.com/p/abc")
+        self.assertEqual(urls, ["https://m.instagram.com/p/abc"])
+
     def test_detects_platforms(self) -> None:
         self.assertEqual(detect_platform("https://youtube.com/shorts/abc"), "youtube")
         self.assertEqual(detect_platform("https://www.instagram.com/reel/abc"), "instagram")
         self.assertEqual(detect_platform("https://soundcloud.com/artist/track"), "soundcloud")
+        self.assertEqual(detect_platform("https://m.youtube.com/watch?v=abc"), "youtube")
+        self.assertEqual(detect_platform("https://music.youtube.com/watch?v=abc"), "youtube")
+        self.assertEqual(detect_platform("https://m.instagram.com/p/abc"), "instagram")
         self.assertIsNone(detect_platform("https://example.com/video"))
+
+    def test_deduplicates_urls(self) -> None:
+        urls = extract_urls("https://youtube.com/watch?v=abc https://youtube.com/watch?v=abc")
+        self.assertEqual(len(urls), 1)
 
 
 class CookiesTests(unittest.TestCase):
