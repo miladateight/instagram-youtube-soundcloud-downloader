@@ -92,6 +92,9 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
         language_code = callback.from_user.language_code if callback.from_user else None
         return state.user_language(callback_user_id(callback), normalize_language(language_code))
 
+    async def reply(message: Message, text: str, reply_markup=None) -> None:
+        await message.answer(text, reply_markup=reply_markup, disable_web_page_preview=True)
+
     def active_cookies_path(user_id: int | None = None) -> Path | None:
         if user_id:
             user_path = state.user_cookies_path(user_id)
@@ -474,6 +477,10 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
                 t(language, "language_selected"),
                 reply_markup=main_keyboard(language, admin=is_admin_id(callback_user_id(callback))),
             )
+            await callback.message.answer(
+                t(language, "menu_hint"),
+                reply_markup=main_reply_keyboard(language),
+            )
         await callback.answer()
 
     @dp.message(Command("help"))
@@ -803,17 +810,52 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
         import hashlib
         return hashlib.md5(url.encode("utf-8")).hexdigest()[:12]
 
-    def format_keyboard(language: str, url: str, platform: str, *, include_song: bool = True) -> InlineKeyboardMarkup:
+    def format_keyboard(
+        language: str,
+        url: str,
+        platform: str,
+        *,
+        include_song: bool = True,
+        has_video: bool = True,
+        has_audio: bool = True,
+        photo_count: int = 0,
+        is_carousel: bool = False,
+    ) -> InlineKeyboardMarkup:
         token = url_token(url)
-        rows = [
-            [
-                InlineKeyboardButton(text=t(language, "button_video"), callback_data=f"dl:video:{token}"),
-                InlineKeyboardButton(text=t(language, "button_audio"), callback_data=f"dl:audio:{token}"),
-            ]
-        ]
-        if include_song:
+        rows: list[list[InlineKeyboardButton]] = []
+
+        if is_carousel and photo_count > 0 and not has_video:
             rows.append(
-                [InlineKeyboardButton(text=t(language, "button_find_song"), callback_data=f"dl:song:{token}")]
+                [InlineKeyboardButton(text=t(language, "button_download_photos"), callback_data=f"dl:photos:{token}")]
+            )
+        elif has_video and has_audio:
+            rows.append(
+                [
+                    InlineKeyboardButton(text=t(language, "button_video"), callback_data=f"dl:video:{token}"),
+                    InlineKeyboardButton(text=t(language, "button_audio"), callback_data=f"dl:audio:{token}"),
+                ]
+            )
+            if include_song:
+                rows.append(
+                    [InlineKeyboardButton(text=t(language, "button_find_song"), callback_data=f"dl:song:{token}")]
+                )
+        elif has_video:
+            rows.append(
+                [InlineKeyboardButton(text=t(language, "button_video"), callback_data=f"dl:video:{token}")]
+            )
+        elif has_audio:
+            rows.append(
+                [
+                    InlineKeyboardButton(text=t(language, "button_audio"), callback_data=f"dl:audio:{token}"),
+                ]
+            )
+            if include_song:
+                rows.append(
+                    [InlineKeyboardButton(text=t(language, "button_find_song"), callback_data=f"dl:song:{token}")]
+                )
+        else:
+            rows.append(
+                [InlineKeyboardButton(text=t(language, "button_download"), callback_data=f"dl:video:{token}")]
             )
         return InlineKeyboardMarkup(inline_keyboard=rows)
 
@@ -1190,10 +1232,40 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
             token = url_token(single_url)
             state.save_pending_link(user_id, single_url, platform or "unknown", token)
             include_song = bool(platform in {"youtube", "instagram"} and settings.enable_song_detection)
-            keyboard = format_keyboard(language, single_url, platform or "", include_song=include_song)
+
+            probe_message = await message.answer(
+                t(language, "probing_content", platform=platform_label(platform)),
+                disable_web_page_preview=True,
+            )
+            cookies_path = active_cookies_path(user_id)
+            probe_result = await downloader.probe_content(single_url, cookies_path)
+
+            has_video = True
+            has_audio = True
+            photo_count = 0
+            is_carousel = False
+            if probe_result:
+                has_video = probe_result.get("has_video", True)
+                has_audio = probe_result.get("has_audio", True)
+                photo_count = probe_result.get("photo_count", 0)
+                is_carousel = probe_result.get("is_carousel", False)
+
+            keyboard = format_keyboard(
+                language,
+                single_url,
+                platform or "",
+                include_song=include_song,
+                has_video=has_video,
+                has_audio=has_audio,
+                photo_count=photo_count,
+                is_carousel=is_carousel,
+            )
+            with suppress(Exception):
+                await probe_message.delete()
             await message.answer(
                 t(language, "choose_format", platform=platform_label(platform), url=short_url_label(single_url)),
                 reply_markup=keyboard,
+                disable_web_page_preview=True,
             )
             return
 
@@ -1224,6 +1296,9 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
         elif action == "song":
             await callback.answer()
             await process_song_detection_from_callback(callback, bot, url, token=token)
+        elif action == "photos":
+            await callback.answer()
+            await process_download_from_callback(callback, bot, url, audio_only=False, token=token)
         else:
             await callback.answer()
 

@@ -145,6 +145,90 @@ class Downloader:
                 return float(value)
         return None
 
+    def probe_content(self, url: str, cookies_file: Path | None = None) -> dict[str, Any] | None:
+        """Probe a URL without downloading. Returns info dict or None.
+
+        Useful for deciding which buttons to show to the user:
+        - has_video: bool
+        - has_audio: bool
+        - photo_count: int (number of images in a carousel)
+        - is_carousel: bool
+        - duration: float | None
+        - title: str | None
+        - uploader: str | None
+        """
+        probe_options = {
+            "quiet": True,
+            "no_warnings": True,
+            "skip_download": True,
+            "noplaylist": False,
+            "playlistend": self.settings.playlist_limit,
+            "ignoreerrors": True,
+        }
+        if cookies_file and cookies_file.exists():
+            probe_options["cookiefile"] = str(cookies_file)
+        if self.settings.force_ipv4:
+            probe_options["force_ipv4"] = True
+        if self.settings.http_proxy:
+            probe_options["proxy"] = self.settings.http_proxy
+        try:
+            with YoutubeDL(probe_options) as ydl:
+                info = ydl.extract_info(url, download=False)
+        except Exception:
+            return None
+        if not isinstance(info, dict):
+            return None
+        return self._classify_probe_info(info, self._detect_platform(url) or "unknown")
+
+    @staticmethod
+    def _classify_probe_info(info: Any, platform: str) -> dict[str, Any]:
+        result: dict[str, Any] = {
+            "has_video": False,
+            "has_audio": False,
+            "photo_count": 0,
+            "is_carousel": False,
+            "duration": None,
+            "title": None,
+            "uploader": None,
+            "platform": platform,
+        }
+        if not isinstance(info, dict):
+            result["has_video"] = True
+            return result
+
+        entries = info.get("entries")
+        if isinstance(entries, list):
+            result["is_carousel"] = True
+            for entry in entries:
+                if not isinstance(entry, dict):
+                    continue
+                ext = (entry.get("ext") or "").lower()
+                vcodec = entry.get("vcodec") or ""
+                if entry.get("_type") == "photo" or ext in {"jpg", "jpeg", "png", "webp"}:
+                    result["photo_count"] += 1
+                elif vcodec and vcodec != "none":
+                    result["has_video"] = True
+                elif entry.get("acodec") and entry.get("acodec") != "none":
+                    result["has_audio"] = True
+                else:
+                    result["has_video"] = True
+        else:
+            ext = (info.get("ext") or "").lower()
+            vcodec = info.get("vcodec") or ""
+            if info.get("_type") == "photo" or ext in {"jpg", "jpeg", "png", "webp"}:
+                result["photo_count"] = 1
+            elif vcodec and vcodec != "none":
+                result["has_video"] = True
+            elif info.get("acodec") and info.get("acodec") != "none":
+                result["has_audio"] = True
+            else:
+                result["has_video"] = True
+
+        result["duration"] = info.get("duration")
+        result["title"] = info.get("title") or info.get("fulltitle")
+        result["uploader"] = info.get("uploader") or info.get("channel") or info.get("artist")
+        return result
+
     def _build_options(
         self,
         workdir: Path,

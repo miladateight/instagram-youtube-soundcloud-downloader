@@ -100,8 +100,9 @@ def feature_checklist_whiptail() -> dict[str, bool]:
         args.append(key)
         args.append("ON" if default else "OFF")
 
-    result = subprocess.run(args, stderr=subprocess.PIPE, text=True)
-    selected = set(result.stderr.strip().split()) if result.returncode == 0 else set()
+    result = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    selected_text = result.stdout if result.returncode == 0 else result.stderr
+    selected = set(selected_text.strip().split()) if selected_text.strip() else set()
     chosen = {}
     for key, label, default in items:
         chosen[key] = key in selected if selected else default
