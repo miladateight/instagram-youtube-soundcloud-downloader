@@ -310,6 +310,23 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
 
         return raw[:900] if raw else t(language, "unknown_error")
 
+    def is_cookie_error(exc: Exception) -> bool:
+        lowered = str(exc).lower()
+        return any(tok in lowered for tok in ("empty media response", "login required", "login to", "log in to", "cookie", "cookies", "sign in"))
+
+    async def notify_admin_cookie_issue(exc: Exception, url: str) -> None:
+        if not is_cookie_error(exc):
+            return
+        admin_lang = state.user_language(settings.admin_id, "fa")
+        try:
+            await bot.send_message(
+                settings.admin_id,
+                t(admin_lang, "cookie_broken_notification", url=short_url_label(url)),
+                disable_web_page_preview=True,
+            )
+        except Exception:
+            logging.exception("Could not notify admin about cookie issue")
+
     def progress_bar(percent: int) -> str:
         filled = max(0, min(10, percent // 10))
         return ("#" * filled) + ("-" * (10 - filled))
@@ -743,7 +760,8 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
             text = status_text(language)
 
         if callback.message:
-            await callback.message.answer(text, reply_markup=reply_markup)
+            with suppress(Exception):
+                await callback.message.edit_text(text, reply_markup=reply_markup, disable_web_page_preview=True)
         await callback.answer()
 
     @dp.message(F.document)
@@ -966,6 +984,7 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
                     with suppress(Exception):
                         await progress_task
                     logging.exception("Download failed for %s", url)
+                    await notify_admin_cookie_issue(exc, url)
                     await status_message.edit_text(
                         t(language, "download_failed", error=friendly_error(exc, language)),
                         reply_markup=error_keyboard(language),
@@ -1047,6 +1066,7 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
                 with suppress(Exception):
                     await progress_task
                 logging.exception("Callback download failed for %s", url)
+                await notify_admin_cookie_issue(exc, url)
                 await status_message.edit_text(
                     t(language, "download_failed", error=friendly_error(exc, language)),
                     reply_markup=error_keyboard(language),
@@ -1126,6 +1146,7 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
                     state.delete_pending_link(token)
             except Exception as exc:
                 logging.exception("Song detection failed for %s", url)
+                await notify_admin_cookie_issue(exc, url)
                 await status_message.edit_text(
                     t(language, "download_failed", error=friendly_error(exc, language)),
                     reply_markup=error_keyboard(language),
