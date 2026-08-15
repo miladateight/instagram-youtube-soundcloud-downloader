@@ -190,6 +190,51 @@ class SenderFallbackTests(unittest.TestCase):
             self.assertGreaterEqual(bot.send_audio.await_count, 1)
             self.assertEqual(bot.send_document.await_count, 0)
 
+    def test_soundcloud_thumbnail_is_sent_as_separate_cover(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            directory = Path(directory)
+            audio = self._make_media(directory, "audio", size=20)
+            result = DownloadResult(
+                title="Track",
+                caption=None,
+                uploader="Artist",
+                source_url="https://soundcloud.com/artist/track",
+                files=[audio],
+                workdir=directory,
+            )
+            bot = MagicMock()
+            bot.send_photo = AsyncMock()
+            bot.send_audio = AsyncMock()
+            bot.send_message = AsyncMock()
+            bot.send_document = AsyncMock()
+
+            sender = TelegramSender(bot, make_settings(), None)
+            asyncio.run(sender.send_result(1, result, "en", "id"))
+
+            bot.send_photo.assert_awaited_once()
+            bot.send_audio.assert_awaited_once()
+
+    def test_document_failure_is_reported_to_caller(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            directory = Path(directory)
+            item = self._make_media(directory, "video")
+            result = DownloadResult(
+                title="t",
+                caption=None,
+                uploader=None,
+                source_url="u",
+                files=[item],
+                workdir=directory,
+            )
+            bot = MagicMock()
+            bot.send_video = AsyncMock(side_effect=Exception("video rejected"))
+            bot.send_document = AsyncMock(side_effect=Exception("document rejected"))
+            bot.send_message = AsyncMock()
+
+            sender = TelegramSender(bot, make_settings(), None)
+            with self.assertRaisesRegex(Exception, "document rejected"):
+                asyncio.run(sender.send_result(1, result, "en", "id"))
+
     def test_soundcloud_bundle_falls_back_to_document_for_oversized_audio(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             directory = Path(directory)

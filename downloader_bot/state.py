@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import time
 import sqlite3
-from contextlib import suppress
+import secrets
+from contextlib import contextmanager
 from pathlib import Path
+from typing import Iterator
 
 
 PENDING_LINK_TTL_SECONDS = 5 * 60
@@ -13,19 +15,19 @@ class BotState:
     def __init__(self, db_path: Path) -> None:
         self.db_path = db_path
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._connections: list[sqlite3.Connection] = []
         self._initialize()
 
-    def _connect(self) -> sqlite3.Connection:
+    @contextmanager
+    def _connect(self) -> Iterator[sqlite3.Connection]:
         connection = sqlite3.connect(self.db_path)
-        self._connections.append(connection)
-        return connection
+        try:
+            yield connection
+            connection.commit()
+        finally:
+            connection.close()
 
     def close(self) -> None:
-        for connection in self._connections:
-            with suppress(Exception):
-                connection.close()
-        self._connections.clear()
+        """Kept for callers; database connections are closed per operation."""
 
     def _initialize(self) -> None:
         with self._connect() as connection:
@@ -139,7 +141,8 @@ class BotState:
     def clear_force_join_chat(self) -> None:
         self.delete("force_join_chat")
 
-    def save_pending_link(self, user_id: int, url: str, platform: str, token: str) -> None:
+    def save_pending_link(self, user_id: int, url: str, platform: str) -> str:
+        token = secrets.token_urlsafe(9)
         with self._connect() as connection:
             connection.execute(
                 "DELETE FROM pending_links WHERE user_id = ? AND url = ?",
@@ -152,21 +155,22 @@ class BotState:
                 """,
                 (token, user_id, url, platform, time.time()),
             )
+        return token
 
-    def get_pending_link(self, token: str) -> tuple[str, str] | None:
+    def get_pending_link(self, token: str, user_id: int) -> tuple[str, str] | None:
         self._purge_pending_links()
         with self._connect() as connection:
             row = connection.execute(
-                "SELECT url, platform FROM pending_links WHERE token = ?",
-                (token,),
+                "SELECT url, platform FROM pending_links WHERE token = ? AND user_id = ?",
+                (token, user_id),
             ).fetchone()
         return (str(row[0]), str(row[1])) if row else None
 
-    def delete_pending_link(self, token: str) -> None:
+    def delete_pending_link(self, token: str, user_id: int) -> None:
         with self._connect() as connection:
             connection.execute(
-                "DELETE FROM pending_links WHERE token = ?",
-                (token,),
+                "DELETE FROM pending_links WHERE token = ? AND user_id = ?",
+                (token, user_id),
             )
 
     def _purge_pending_links(self) -> None:

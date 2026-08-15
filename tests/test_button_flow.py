@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import tempfile
 import unittest
 from pathlib import Path
@@ -15,15 +14,8 @@ from downloader_bot.state import BotState
 class ButtonFlowTests(unittest.TestCase):
     """Tests for the inline-button download flow (Phase 2)."""
 
-    def test_url_token_is_stable_and_short(self) -> None:
-        url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-        token = hashlib.md5(url.encode("utf-8")).hexdigest()[:12]
-        self.assertEqual(token, hashlib.md5(url.encode("utf-8")).hexdigest()[:12])
-        self.assertLessEqual(len(token), 12)
-
     def test_callback_data_fits_telegram_limit(self) -> None:
-        url = "https://www.instagram.com/reel/CtB6xWqBaYJ/?igshid=verylongqueryparam1234567890"
-        token = hashlib.md5(url.encode("utf-8")).hexdigest()[:12]
+        token = "AbCdEf123456"
         callback_data = f"dl:video:{token}"
         self.assertLessEqual(len(callback_data), 64, "Telegram callback_data must be <= 64 bytes")
 
@@ -46,15 +38,14 @@ class ButtonFlowTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             state = BotState(Path(directory) / "state.sqlite3")
             url = "https://youtube.com/watch?v=test"
-            token = hashlib.md5(url.encode("utf-8")).hexdigest()[:12]
-            state.save_pending_link(100, url, "youtube", token)
+            token = state.save_pending_link(100, url, "youtube")
 
-            pending = state.get_pending_link(token)
+            pending = state.get_pending_link(token, 100)
             self.assertIsNotNone(pending)
             self.assertEqual(pending[0], url)
 
-            state.delete_pending_link(token)
-            self.assertIsNone(state.get_pending_link(token))
+            state.delete_pending_link(token, 100)
+            self.assertIsNone(state.get_pending_link(token, 100))
             state.close()
 
 

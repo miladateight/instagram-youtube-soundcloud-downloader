@@ -102,6 +102,7 @@ class ConfigTests(unittest.TestCase):
             os.environ["ENABLE_SONG_DETECTION"] = "false"
             os.environ["SHAZAM_API_KEY"] = "mykey123"
             os.environ["FORCE_IPV4"] = "true"
+            os.environ["CONCURRENT_DOWNLOADS"] = "100"
             for key in ["DOWNLOAD_DIR", "DATA_DIR", "LOG_DIR", "COOKIES_FILE"]:
                 os.environ.pop(key, None)
 
@@ -115,6 +116,7 @@ class ConfigTests(unittest.TestCase):
             self.assertFalse(settings.enable_song_detection)
             self.assertEqual(settings.shazam_api_key, "mykey123")
             self.assertTrue(settings.force_ipv4)
+            self.assertEqual(settings.concurrent_downloads, 8)
         finally:
             os.environ.clear()
             os.environ.update(old_env)

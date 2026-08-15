@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import shutil
+import subprocess
+import sys
 import tempfile
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -62,6 +64,7 @@ class Downloader:
         try:
             platform = self._detect_platform(url)
             audio_format = self._audio_format_for(url, platform, audio_only)
+            youtube_compatible = platform == "youtube"
 
             options = self._build_options(
                 workdir,
@@ -70,12 +73,39 @@ class Downloader:
                 audio_only=audio_only,
                 audio_format=audio_format,
                 progress_callback=progress_callback,
+                compatible_formats=youtube_compatible,
+                youtube_client="android_vr" if youtube_compatible else None,
             )
             with YoutubeDL(options) as ydl:
                 info = ydl.extract_info(url, download=True)
 
             files = self._collect_files(workdir, info)
-            if not files:
+            visual_requested = platform in {"youtube", "instagram"} and not audio_only
+            needs_fallback = not files or (
+                visual_requested and not self._has_visual_media(files)
+            )
+            if needs_fallback and platform == "youtube":
+                for attempt in range(1, 3):
+                    compatible_dir = workdir / f"youtube-retry-{attempt}"
+                    compatible_dir.mkdir(parents=True, exist_ok=True)
+                    compatible_options = self._build_options(
+                        compatible_dir,
+                        cookies_file,
+                        write_thumbnail=True,
+                        audio_only=audio_only,
+                        audio_format=audio_format,
+                        progress_callback=progress_callback,
+                        compatible_formats=True,
+                        youtube_client="android_vr",
+                    )
+                    with YoutubeDL(compatible_options) as ydl:
+                        info = ydl.extract_info(url, download=True)
+                    files = self._collect_files(compatible_dir, info)
+                    if files and (not visual_requested or self._has_visual_media(files)):
+                        break
+            if needs_fallback and platform == "instagram":
+                files = self._download_instagram_gallery(url, workdir, cookies_file)
+            if not files or (visual_requested and not self._has_visual_media(files)):
                 raise RuntimeError("No downloadable media file was produced.")
 
             return DownloadResult(
@@ -92,6 +122,57 @@ class Downloader:
         except Exception:
             self.cleanup(workdir)
             raise
+
+    def _download_instagram_gallery(
+        self,
+        url: str,
+        workdir: Path,
+        cookies_file: Path | None,
+    ) -> list[DownloadedMedia]:
+        gallery_dir = workdir / "instagram"
+        gallery_dir.mkdir(parents=True, exist_ok=True)
+        command = [
+            sys.executable,
+            "-m",
+            "gallery_dl",
+            "--no-mtime",
+            "--range",
+            f"1-{self.settings.playlist_limit}",
+            "--destination",
+            str(gallery_dir),
+        ]
+        if cookies_file and cookies_file.exists():
+            command.extend(["--cookies", str(cookies_file)])
+        if self.settings.http_proxy:
+            command.extend(["--proxy", self.settings.http_proxy])
+        command.append(url)
+
+        try:
+            completed = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+                timeout=10 * 60,
+                check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            raise RuntimeError(f"Instagram fallback failed: {exc}") from exc
+
+        files = self._collect_files(
+            gallery_dir,
+            {},
+            include_unreferenced_photos=True,
+        )
+        if completed.returncode != 0 and not files:
+            detail = (completed.stderr or completed.stdout or "").strip().splitlines()
+            message = detail[-1] if detail else "Instagram media could not be downloaded."
+            raise RuntimeError(message)
+        return files
+
+    @staticmethod
+    def _has_visual_media(files: list[DownloadedMedia]) -> bool:
+        visual_suffixes = {".jpg", ".jpeg", ".png", ".webp", ".mp4", ".mov", ".m4v", ".webm", ".mkv"}
+        return any(item.path.suffix.lower() in visual_suffixes for item in files)
 
     @staticmethod
     def _detect_platform(url: str) -> str | None:
@@ -239,11 +320,25 @@ class Downloader:
         audio_only: bool = False,
         audio_format: str | None = None,
         progress_callback: Any = None,
+        compatible_formats: bool = False,
+        youtube_client: str | None = None,
     ) -> dict[str, Any]:
-        if audio_format:
+        if compatible_formats and audio_only:
+            audio_fmt = "ba[ext=m4a][abr<=192]/b[ext=mp4]/ba/b"
+        elif audio_format:
             audio_fmt = audio_format
         else:
             audio_fmt = "bestaudio/best"
+
+        if compatible_formats:
+            video_fmt = "b[ext=mp4][vcodec^=avc1]/best[ext=mp4]/best"
+        else:
+            video_fmt = (
+                "bv*[ext=mp4][vcodec^=avc1]+ba[ext=m4a]/"
+                "b[ext=mp4][vcodec^=avc1]/"
+                "bv*[ext=mp4]+ba[ext=m4a]/"
+                "best[ext=mp4]/best"
+            )
 
         options: dict[str, Any] = {
             "paths": {"home": str(workdir)},
@@ -251,14 +346,7 @@ class Downloader:
                 "default": "%(title).120B.%(ext)s",
                 "thumbnail": "%(title).120B.%(ext)s",
             },
-            "format": audio_fmt
-            if audio_only
-            else (
-                "bv*[ext=mp4][vcodec^=avc1]+ba[ext=m4a]/"
-                "b[ext=mp4][vcodec^=avc1]/"
-                "bv*[ext=mp4]+ba[ext=m4a]/"
-                "best[ext=mp4]/best"
-            ),
+            "format": audio_fmt if audio_only else video_fmt,
             "merge_output_format": "mp4",
             "writethumbnail": write_thumbnail,
             "noplaylist": False,
@@ -279,6 +367,10 @@ class Downloader:
             options["force_ipv4"] = True
         if self.settings.http_proxy:
             options["proxy"] = self.settings.http_proxy
+        if youtube_client:
+            options["extractor_args"] = {
+                "youtube": {"player_client": [youtube_client]},
+            }
         if progress_callback is not None:
             options["progress_hooks"] = [progress_callback]
         if audio_only:
@@ -296,7 +388,12 @@ class Downloader:
         return options
 
     @staticmethod
-    def _collect_files(workdir: Path, info: Any) -> list[DownloadedMedia]:
+    def _collect_files(
+        workdir: Path,
+        info: Any,
+        *,
+        include_unreferenced_photos: bool = False,
+    ) -> list[DownloadedMedia]:
         ignored_suffixes = {".part", ".ytdl", ".temp", ".tmp", ".json"}
         photo_suffixes = {".jpg", ".jpeg", ".png", ".webp"}
 
@@ -317,7 +414,7 @@ class Downloader:
 
             meta = Downloader._meta_for_path(info, resolved)
             if resolved.suffix.lower() in photo_suffixes and meta.thumbnail_path is None:
-                meta = meta._replace(thumbnail_path=resolved)
+                meta = replace(meta, thumbnail_path=resolved)
 
             files.append(
                 DownloadedMedia(
@@ -335,7 +432,7 @@ class Downloader:
                 continue
             if path.suffix.lower() in ignored_suffixes:
                 continue
-            if path.suffix.lower() in photo_suffixes:
+            if path.suffix.lower() in photo_suffixes and not include_unreferenced_photos:
                 continue
             if path.resolve() in seen:
                 continue

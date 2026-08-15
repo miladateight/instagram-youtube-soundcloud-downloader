@@ -5,6 +5,8 @@ import tempfile
 import unittest
 from pathlib import Path, PurePosixPath
 import sys
+from subprocess import CompletedProcess
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -35,6 +37,31 @@ class InstallerTests(unittest.TestCase):
         self.assertEqual(set(install.FEATURE_DEFAULTS.keys()), expected_keys)
         for value in install.FEATURE_DEFAULTS.values():
             self.assertTrue(value)
+
+    def test_whiptail_uses_feature_keys_as_tags(self) -> None:
+        selected = '"ENABLE_YOUTUBE" "ENABLE_SOUNDCLOUD"'
+        with patch(
+            "install.subprocess.run",
+            return_value=CompletedProcess([], 0, stdout=selected, stderr=""),
+        ) as run_mock:
+            result = install.feature_checklist_whiptail()
+
+        args = run_mock.call_args.args[0]
+        youtube_index = args.index("ENABLE_YOUTUBE")
+        self.assertIn("YouTube", args[youtube_index + 1])
+        self.assertEqual(args[youtube_index + 2], "ON")
+        self.assertTrue(result["ENABLE_YOUTUBE"])
+        self.assertTrue(result["ENABLE_SOUNDCLOUD"])
+        self.assertFalse(result["ENABLE_INSTAGRAM"])
+        self.assertFalse(result["ENABLE_SONG_DETECTION"])
+
+    def test_whiptail_cancel_aborts(self) -> None:
+        with patch(
+            "install.subprocess.run",
+            return_value=CompletedProcess([], 1, stdout="", stderr=""),
+        ):
+            with self.assertRaises(SystemExit):
+                install.feature_checklist_whiptail()
 
     def test_write_env_includes_feature_toggles(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

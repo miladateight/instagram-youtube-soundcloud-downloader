@@ -2,7 +2,7 @@
 
 **Language:** [English](README.md) | [فارسی](README.fa.md) | [العربية](README.ar.md) | [Deutsch](README.de.md)
 
-**Version 1.0.0**
+**Version 1.1.0**
 
 A private, portfolio-ready Telegram bot for downloading media from YouTube, YouTube Shorts, Instagram, and SoundCloud — with inline buttons, song detection, and an interactive installer.
 
@@ -16,13 +16,14 @@ The project is written completely in Python and includes a simple Ubuntu install
 - Automatic link detection for YouTube, `youtu.be`, Shorts, `m.youtube.com`, `music.youtube.com`, Instagram, and SoundCloud
 - Video, photo, audio, and document delivery through `yt-dlp`
 - Instagram posts, Reels, profiles, and many carousel posts
+- Photo-only Instagram posts and profiles use a `gallery-dl` fallback when `yt-dlp` has no video result
 - Instagram multi-item posts sent as Telegram albums/media groups
 - **Correct video dimensions** — Reels and Shorts keep their original aspect ratio (no more square videos)
 - YouTube video downloads prefer Telegram-friendly MP4 instead of WebM
 - SoundCloud: best audio quality for tracks under 15 minutes, cover art sent separately before the audio
 - Captions added to the first uploaded file
 - Long captions are shortened safely with a "Get full caption" button
-- Fallback to document upload if a file is too large for Telegram
+- Fallback to document upload if Telegram rejects the media upload
 
 ### User Experience
 - **Inline glass buttons** — after sending a link, the bot asks what you want: Video, Audio (MP3), or Find Song
@@ -32,6 +33,7 @@ The project is written completely in Python and includes a simple Ubuntu install
 - **Share button** — users can forward the bot to their friends
 - Real download progress (using yt-dlp progress hooks)
 - Per-user anti-spam guard: one active download and one new request every 5 seconds
+- Download buttons are bound to the user who submitted the link and re-check access rules before running
 - Four-language bot UI: Persian, English, Arabic, and German
 - One-time user language selection, with manual changes through `/language`
 - Categorized error messages (no raw yt-dlp errors shown to users)
@@ -221,7 +223,7 @@ BOT_USERNAME=
 ALLOW_ALL_USERS=false
 MAX_UPLOAD_MB=0
 PLAYLIST_LIMIT=20
-CONCURRENT_DOWNLOADS=100
+CONCURRENT_DOWNLOADS=4
 DOWNLOAD_DIR=downloads
 DATA_DIR=data
 LOG_DIR=logs

@@ -2,7 +2,7 @@
 
 **اللغة:** [English](README.md) | [فارسی](README.fa.md) | [العربية](README.ar.md) | [Deutsch](README.de.md)
 
-**الإصدار 1.0.0**
+**الإصدار 1.1.0**
 
 بوت تيليجرام خاص ومناسب للعرض في السيرة المهنية لتنزيل الوسائط من YouTube و YouTube Shorts و Instagram و SoundCloud — مع أزرار شفافة واكتشاف الأغاني ومثبت تفاعلي.
 
@@ -16,6 +16,7 @@
 - اكتشاف تلقائي للروابط من YouTube و `youtu.be` و Shorts و `m.youtube.com` و `music.youtube.com` و Instagram و SoundCloud
 - تنزيل وإرسال الفيديو والصور والصوت والملفات عبر `yt-dlp`
 - دعم منشورات Instagram و Reels والملفات الشخصية والعديد من carousel
+- استخدام `gallery-dl` كمسار احتياطي للمنشورات والملفات الشخصية التي تحتوي على صور فقط عندما لا يعيد `yt-dlp` نتيجة فيديو
 - إرسال منشورات carousel كألبومات تيليجرام
 - **أبعاد فيديو صحيحة** — تحافظ Reels و Shorts على نسبة أبعادها الأصلية
 - تفضيل تنزيل فيديوهات YouTube بصيغة MP4 بدلاً من WebM
@@ -218,7 +219,7 @@ BOT_USERNAME=
 ALLOW_ALL_USERS=false
 MAX_UPLOAD_MB=0
 PLAYLIST_LIMIT=20
-CONCURRENT_DOWNLOADS=100
+CONCURRENT_DOWNLOADS=4
 DOWNLOAD_DIR=downloads
 DATA_DIR=data
 LOG_DIR=logs

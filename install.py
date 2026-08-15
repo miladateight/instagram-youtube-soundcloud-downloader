@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import getpass
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -93,19 +94,20 @@ def feature_checklist_whiptail() -> dict[str, bool]:
         ("ENABLE_SOUNDCLOUD", "SoundCloud (high quality audio + cover art)", FEATURE_DEFAULTS["ENABLE_SOUNDCLOUD"]),
         ("ENABLE_SONG_DETECTION", "Song detection via Shazam (Find song button)", FEATURE_DEFAULTS["ENABLE_SONG_DETECTION"]),
     ]
-    args = ["whiptail", "--title", "Select features to enable", "--checklist",
+    args = ["whiptail", "--title", "Select features to enable", "--output-fd", "1", "--checklist",
             "Use SPACE to toggle. ENTER to confirm.", "0", "0", "0"]
     for key, label, default in items:
-        args.append(label)
         args.append(key)
+        args.append(label)
         args.append("ON" if default else "OFF")
 
     result = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    selected_text = result.stdout if result.returncode == 0 else result.stderr
-    selected = set(selected_text.strip().split()) if selected_text.strip() else set()
+    if result.returncode != 0:
+        raise SystemExit("Feature selection cancelled.")
+    selected = set(shlex.split(result.stdout)) if result.stdout.strip() else set()
     chosen = {}
     for key, label, default in items:
-        chosen[key] = key in selected if selected else default
+        chosen[key] = key in selected
     if not any(chosen.values()):
         print("No features selected. Aborting.")
         raise SystemExit(1)
@@ -183,7 +185,7 @@ def write_env(
         "ALLOW_ALL_USERS=false",
         "MAX_UPLOAD_MB=0",
         "PLAYLIST_LIMIT=20",
-        "CONCURRENT_DOWNLOADS=100",
+        "CONCURRENT_DOWNLOADS=4",
         f"DOWNLOAD_DIR={env_quote(str(download_dir))}",
         f"DATA_DIR={env_quote(str(data_dir))}",
         f"LOG_DIR={env_quote(str(log_dir))}",

@@ -62,24 +62,43 @@ class StateTests(unittest.TestCase):
     def test_pending_link_roundtrip(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             state = BotState(Path(directory) / "state.sqlite3")
-            state.save_pending_link(100, "https://youtube.com/watch?v=abc", "youtube", "tok123")
-            pending = state.get_pending_link("tok123")
+            token = state.save_pending_link(100, "https://youtube.com/watch?v=abc", "youtube")
+            pending = state.get_pending_link(token, 100)
             self.assertIsNotNone(pending)
             self.assertEqual(pending[0], "https://youtube.com/watch?v=abc")
             self.assertEqual(pending[1], "youtube")
 
-            state.delete_pending_link("tok123")
-            self.assertIsNone(state.get_pending_link("tok123"))
+            state.delete_pending_link(token, 100)
+            self.assertIsNone(state.get_pending_link(token, 100))
             state.close()
 
     def test_pending_link_unknown_token_returns_none(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             state = BotState(Path(directory) / "state.sqlite3")
-            self.assertIsNone(state.get_pending_link("nonexistent"))
+            self.assertIsNone(state.get_pending_link("nonexistent", 100))
             state.close()
 
             del state
             gc.collect()
+
+    def test_pending_link_is_private_to_its_owner(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            state = BotState(Path(directory) / "state.sqlite3")
+            token = state.save_pending_link(100, "https://youtube.com/watch?v=abc", "youtube")
+
+            self.assertIsNotNone(state.get_pending_link(token, 100))
+            self.assertIsNone(state.get_pending_link(token, 200))
+
+    def test_same_url_for_two_users_gets_distinct_tokens(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            state = BotState(Path(directory) / "state.sqlite3")
+            url = "https://youtube.com/watch?v=abc"
+            first = state.save_pending_link(100, url, "youtube")
+            second = state.save_pending_link(200, url, "youtube")
+
+            self.assertNotEqual(first, second)
+            self.assertLessEqual(len(first), 12)
+            self.assertLessEqual(len(second), 12)
 
 
 if __name__ == "__main__":

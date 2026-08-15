@@ -437,6 +437,24 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
 
         return False
 
+    async def reject_callback_if_needed(callback: CallbackQuery, bot: Bot) -> bool:
+        language = callback_language(callback)
+        user_id = callback_user_id(callback)
+        if not (public_access_enabled() or is_admin_id(user_id)):
+            await callback.answer(t(language, "private_bot"), show_alert=True)
+            return True
+        if not state.is_active():
+            key = "bot_not_active_admin" if is_admin_id(user_id) else "bot_not_active_user"
+            await callback.answer(t(language, key), show_alert=True)
+            return True
+        if not is_admin_id(user_id) and state.is_force_join_enabled() and state.force_join_chat():
+            subscribed = await is_subscribed(bot, user_id)
+            if subscribed is not True:
+                key = "membership_check_failed" if subscribed is None else "membership_missing"
+                await callback.answer(t(language, key), show_alert=True)
+                return True
+        return False
+
     async def send_start_help(message: Message, bot: Bot) -> None:
         language = message_language(message)
         if not state.has_user_language(message_user_id(message)):
@@ -824,13 +842,9 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
                 await callback.message.answer(caption[start : start + 3900])
         await callback.answer()
 
-    def url_token(url: str) -> str:
-        import hashlib
-        return hashlib.md5(url.encode("utf-8")).hexdigest()[:12]
-
     def format_keyboard(
         language: str,
-        url: str,
+        token: str,
         platform: str,
         *,
         include_song: bool = True,
@@ -839,7 +853,6 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
         photo_count: int = 0,
         is_carousel: bool = False,
     ) -> InlineKeyboardMarkup:
-        token = url_token(url)
         rows: list[list[InlineKeyboardButton]] = []
 
         if is_carousel and photo_count > 0 and not has_video:
@@ -1060,7 +1073,7 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
                 with suppress(Exception):
                     await status_message.delete()
                 if token:
-                    state.delete_pending_link(token)
+                    state.delete_pending_link(token, user_id)
             except Exception as exc:
                 finished.set()
                 with suppress(Exception):
@@ -1143,7 +1156,7 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
                         with suppress(Exception):
                             await bot.send_photo(chat_id, photo=song_info.cover_url)
                 if token:
-                    state.delete_pending_link(token)
+                    state.delete_pending_link(token, user_id)
             except Exception as exc:
                 logging.exception("Song detection failed for %s", url)
                 await notify_admin_cookie_issue(exc, url, bot)
@@ -1250,8 +1263,7 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
                 await process_downloads(message, bot, urls)
                 return
 
-            token = url_token(single_url)
-            state.save_pending_link(user_id, single_url, platform or "unknown", token)
+            token = state.save_pending_link(user_id, single_url, platform or "unknown")
             include_song = bool(platform in {"youtube", "instagram"} and settings.enable_song_detection)
 
             probe_message = await message.answer(
@@ -1273,7 +1285,7 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
 
             keyboard = format_keyboard(
                 language,
-                single_url,
+                token,
                 platform or "",
                 include_song=include_song,
                 has_video=has_video,
@@ -1295,6 +1307,8 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
     @dp.callback_query(F.data.startswith("dl:"))
     async def download_choice_callback(callback: CallbackQuery, bot: Bot) -> None:
         language = callback_language(callback)
+        if await reject_callback_if_needed(callback, bot):
+            return
         parts = callback.data.split(":", 2)
         if len(parts) < 2:
             await callback.answer()
@@ -1302,11 +1316,18 @@ def create_dispatcher(settings: Settings) -> Dispatcher:
         action = parts[1]
         token = parts[2] if len(parts) > 2 else ""
 
-        pending = state.get_pending_link(token)
+        user_id = callback_user_id(callback)
+        pending = state.get_pending_link(token, user_id)
         if not pending:
             await callback.answer(t(language, "link_expired"), show_alert=True)
             return
-        url, _platform = pending
+        url, platform = pending
+        if not settings.platform_enabled(platform):
+            await callback.answer(
+                t(language, "platform_disabled", platform=platform_label(platform)),
+                show_alert=True,
+            )
+            return
 
         if action == "video":
             await callback.answer()

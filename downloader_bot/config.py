@@ -92,7 +92,7 @@ def load_settings() -> Settings:
         allow_all_users=_bool_env("ALLOW_ALL_USERS", False),
         max_upload_mb=_int_env("MAX_UPLOAD_MB", 0),
         playlist_limit=max(1, _int_env("PLAYLIST_LIMIT", 20)),
-        concurrent_downloads=max(1, _int_env("CONCURRENT_DOWNLOADS", 1)),
+        concurrent_downloads=min(8, max(1, _int_env("CONCURRENT_DOWNLOADS", 4))),
         download_dir=Path(os.getenv("DOWNLOAD_DIR", "downloads")).expanduser(),
         data_dir=Path(os.getenv("DATA_DIR", "data")).expanduser(),
         log_dir=Path(os.getenv("LOG_DIR", "logs")).expanduser(),

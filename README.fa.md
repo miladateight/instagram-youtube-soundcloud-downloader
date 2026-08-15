@@ -2,7 +2,7 @@
 
 **زبان:** [English](README.md) | [فارسی](README.fa.md) | [العربية](README.ar.md) | [Deutsch](README.de.md)
 
-**نسخه ۱.۰.۰**
+**نسخه ۱.۱.۰**
 
 یک ربات خصوصی و رزومه‌ای تلگرام برای دانلود رسانه از YouTube، YouTube Shorts، Instagram و SoundCloud — با دکمه‌های شیشه‌ای، تشخیص آهنگ و نصب تعاملی.
 
@@ -16,6 +16,7 @@
 - تشخیص خودکار لینک‌های YouTube، `youtu.be`، Shorts، `m.youtube.com`، `music.youtube.com`، Instagram و SoundCloud
 - دانلود و ارسال ویدیو، عکس، فایل صوتی و فایل‌های عمومی با `yt-dlp`
 - پشتیبانی از پست‌ها، ریلزها، پروفایل‌ها و بسیاری از carouselهای Instagram
+- استفاده از fallback مبتنی بر `gallery-dl` برای پست‌ها و پروفایل‌های صرفاً عکس وقتی `yt-dlp` ویدیویی برنمی‌گرداند
 - ارسال carouselهای Instagram به‌صورت آلبوم تلگرام
 - **ابعاد صحیح ویدیو** — ریلزها و شورتزها نسبت ابعاد اصلی خود را حفظ می‌کنند (دیگه مربعی نمی‌شوند)
 - دانلود ویدیوهای YouTube ترجیحاً به‌صورت MP4 دوستانه تلگرام به‌جای WebM
@@ -221,7 +222,7 @@ BOT_USERNAME=
 ALLOW_ALL_USERS=false
 MAX_UPLOAD_MB=0
 PLAYLIST_LIMIT=20
-CONCURRENT_DOWNLOADS=100
+CONCURRENT_DOWNLOADS=4
 DOWNLOAD_DIR=downloads
 DATA_DIR=data
 LOG_DIR=logs

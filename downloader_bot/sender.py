@@ -16,7 +16,7 @@ from .config import Settings
 from .downloader import DownloadResult
 from .i18n import t
 from .state import BotState
-from .utils import file_kind, truncate_caption
+from .utils import detect_platform, file_kind, truncate_caption
 
 
 class TelegramSender:
@@ -47,14 +47,23 @@ class TelegramSender:
 
         has_audio = "audio" in kinds
         has_photo = "photo" in kinds
-        if has_audio and has_photo and not any(k == "video" for k in kinds):
+        is_soundcloud = detect_platform(result.source_url) == "soundcloud"
+        if has_audio and (has_photo or is_soundcloud) and not any(k == "video" for k in kinds):
             await self._send_soundcloud_bundle(
                 chat_id, valid_files, kinds, caption, caption_markup, result, language
             )
             return
 
         if all(kind in {"photo", "video"} for kind in kinds) and len(valid_files) > 1:
-            await self._send_media_groups(chat_id, valid_files, kinds, caption, language)
+            await self._send_media_groups(
+                chat_id,
+                valid_files,
+                kinds,
+                caption,
+                caption_markup,
+                result,
+                language,
+            )
             if caption_markup:
                 await self.bot.send_message(
                     chat_id,
@@ -77,9 +86,17 @@ class TelegramSender:
         photos = [item for item, kind in zip(files, kinds) if kind == "photo"]
         audios = [item for item, kind in zip(files, kinds) if kind == "audio"]
 
+        seen_covers = {item.path.resolve() for item in photos}
+        for audio in audios:
+            cover = audio.thumbnail_path
+            if cover and cover.exists() and cover.resolve() not in seen_covers:
+                photos.append(audio)
+                seen_covers.add(cover.resolve())
+
         for photo in photos:
             with suppress(Exception):
-                await self.bot.send_photo(chat_id, FSInputFile(photo.path))
+                cover_path = photo.thumbnail_path if file_kind(photo.path) == "audio" else photo.path
+                await self.bot.send_photo(chat_id, FSInputFile(cover_path))
 
         for index, item in enumerate(audios):
             item_caption = caption if index == 0 else None
@@ -98,11 +115,25 @@ class TelegramSender:
         files,
         kinds,
         caption: str | None,
+        caption_markup: InlineKeyboardMarkup | None,
+        result: DownloadResult,
         language: str,
     ) -> None:
         for chunk_start in range(0, len(files), 10):
             chunk = files[chunk_start : chunk_start + 10]
             chunk_kinds = kinds[chunk_start : chunk_start + 10]
+            if any(item.size > self.settings.max_upload_bytes for item in chunk):
+                await self._send_one_by_one(
+                    chat_id,
+                    chunk,
+                    chunk_kinds,
+                    caption if chunk_start == 0 else None,
+                    caption_markup if chunk_start == 0 else None,
+                    result,
+                    language,
+                )
+                continue
+
             media = []
             for index, (item, kind) in enumerate(zip(chunk, chunk_kinds)):
                 item_caption = caption if chunk_start == 0 and index == 0 else None
@@ -122,7 +153,19 @@ class TelegramSender:
                             supports_streaming=True,
                         )
                     )
-            await self.bot.send_media_group(chat_id=chat_id, media=media)
+            try:
+                await self.bot.send_media_group(chat_id=chat_id, media=media)
+            except Exception as exc:
+                logging.warning("send_media_group failed, will send items separately: %s", exc)
+                await self._send_one_by_one(
+                    chat_id,
+                    chunk,
+                    chunk_kinds,
+                    caption if chunk_start == 0 else None,
+                    caption_markup if chunk_start == 0 else None,
+                    result,
+                    language,
+                )
 
     async def _send_one_by_one(
         self,
@@ -215,13 +258,12 @@ class TelegramSender:
             return False
 
     async def _send_as_document(self, chat_id: int, item, caption, reply_markup, language: str) -> None:
-        with suppress(Exception):
-            await self.bot.send_document(
-                chat_id,
-                FSInputFile(item.path),
-                caption=caption,
-                reply_markup=reply_markup,
-            )
+        await self.bot.send_document(
+            chat_id,
+            FSInputFile(item.path),
+            caption=caption,
+            reply_markup=reply_markup,
+        )
 
     def _caption_preview(
         self,

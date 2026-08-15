@@ -2,7 +2,7 @@
 
 **Sprache:** [English](README.md) | [فارسی](README.fa.md) | [العربية](README.ar.md) | [Deutsch](README.de.md)
 
-**Version 1.0.0**
+**Version 1.1.0**
 
 Ein privater, portfolio-tauglicher Telegram-Bot zum Herunterladen von Medien von YouTube, YouTube Shorts, Instagram und SoundCloud — mit Inline-Buttons, Liederkennung und einem interaktiven Installer.
 
@@ -16,6 +16,7 @@ Das Projekt ist vollständig in Python geschrieben und enthält einen einfachen 
 - Automatische Link-Erkennung für YouTube, `youtu.be`, Shorts, `m.youtube.com`, `music.youtube.com`, Instagram und SoundCloud
 - Video-, Foto-, Audio- und Dokumentlieferung über `yt-dlp`
 - Instagram-Posts, Reels, Profile und viele Carousel-Posts
+- `gallery-dl`-Fallback für reine Foto-Posts und Profile, wenn `yt-dlp` kein Videoergebnis liefert
 - Instagram-Multi-Item-Posts als Telegram-Alben/Mediagruppen gesendet
 - **Korrekte Videoabmessungen** — Reels und Shorts behalten ihr ursprüngliches Seitenverhältnis
 - YouTube-Video-Downloads bevorzugen Telegram-freundliches MP4 statt WebM
@@ -219,7 +220,7 @@ BOT_USERNAME=
 ALLOW_ALL_USERS=false
 MAX_UPLOAD_MB=0
 PLAYLIST_LIMIT=20
-CONCURRENT_DOWNLOADS=100
+CONCURRENT_DOWNLOADS=4
 DOWNLOAD_DIR=downloads
 DATA_DIR=data
 LOG_DIR=logs

@@ -4,15 +4,43 @@ import tempfile
 import unittest
 from pathlib import Path
 import sys
+from subprocess import CompletedProcess
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 try:
-    from downloader_bot.downloader import Downloader
+    from downloader_bot.config import Settings
+    from downloader_bot.downloader import DownloadedMedia, Downloader
 except ModuleNotFoundError as exc:  # pragma: no cover - depends on local test env
     if exc.name != "yt_dlp":
         raise
     Downloader = None
+
+
+def make_settings(directory: Path) -> Settings:
+    return Settings(
+        bot_name="test",
+        bot_token="test",
+        admin_id=1,
+        allow_all_users=False,
+        max_upload_mb=50,
+        playlist_limit=5,
+        concurrent_downloads=1,
+        download_dir=directory / "downloads",
+        data_dir=directory / "data",
+        log_dir=directory / "logs",
+        cookies_file=None,
+        enable_youtube=True,
+        enable_instagram=True,
+        enable_soundcloud=True,
+        enable_song_detection=True,
+        shazam_api_key=None,
+        force_ipv4=False,
+        support_username=None,
+        bot_username=None,
+        http_proxy=None,
+    )
 
 
 class DownloaderMetadataTests(unittest.TestCase):
@@ -105,6 +133,83 @@ class DownloaderMetadataTests(unittest.TestCase):
             self.assertEqual(len(files), 2)
             widths = {f.width for f in files}
             self.assertEqual(widths, {720})
+
+    def test_collect_files_accepts_an_actual_photo(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            photo = Path(directory) / "post.jpg"
+            photo.write_bytes(b"\xff\xd8\xff\xe0")
+            info = {"requested_downloads": [{"filepath": str(photo)}]}
+
+            files = Downloader._collect_files(Path(directory), info)
+
+            self.assertEqual(len(files), 1)
+            self.assertEqual(files[0].path, photo)
+            self.assertEqual(files[0].thumbnail_path, photo)
+
+    def test_instagram_gallery_fallback_collects_photos(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            downloader = Downloader(make_settings(root))
+            workdir = root / "job"
+            gallery_dir = workdir / "instagram" / "instagram" / "account"
+            gallery_dir.mkdir(parents=True)
+            photo = gallery_dir / "post.jpg"
+            photo.write_bytes(b"\xff\xd8\xff\xe0")
+
+            with patch(
+                "downloader_bot.downloader.subprocess.run",
+                return_value=CompletedProcess([], 0, stdout="", stderr=""),
+            ):
+                files = downloader._download_instagram_gallery(
+                    "https://www.instagram.com/p/example/",
+                    workdir,
+                    None,
+                )
+
+            self.assertEqual([item.path for item in files], [photo])
+
+    def test_compatible_youtube_formats_prefer_progressive_mp4(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            downloader = Downloader(make_settings(root))
+
+            video = downloader._build_options(
+                root,
+                None,
+                compatible_formats=True,
+                youtube_client="android_vr",
+            )
+            audio = downloader._build_options(
+                root,
+                None,
+                audio_only=True,
+                compatible_formats=True,
+            )
+
+            self.assertTrue(video["format"].startswith("b[ext=mp4]"))
+            self.assertEqual(
+                video["extractor_args"]["youtube"]["player_client"],
+                ["android_vr"],
+            )
+            self.assertIn("abr<=192", audio["format"])
+
+    def test_visual_request_rejects_orphan_audio_stream(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            audio = Path(directory) / "orphan.m4a"
+            audio.write_bytes(b"audio")
+            video = Path(directory) / "video.mp4"
+            video.write_bytes(b"video")
+
+            self.assertFalse(
+                Downloader._has_visual_media(
+                    [DownloadedMedia(path=audio, size=audio.stat().st_size)]
+                )
+            )
+            self.assertTrue(
+                Downloader._has_visual_media(
+                    [DownloadedMedia(path=video, size=video.stat().st_size)]
+                )
+            )
 
 
     def test_soundcloud_format_short_track_picks_best_quality(self) -> None:
