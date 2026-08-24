@@ -294,7 +294,7 @@ def main() -> None:
         return
 
     print("=== Bot configuration ===")
-    bot_name = prompt("Bot name", default="Atieght Downloader")
+    bot_name = prompt("Bot name", default="Ateight Downloader")
     bot_token = prompt("Bot token (from BotFather)")
     admin_id = prompt("Admin numeric Telegram ID")
     if not admin_id.isdigit():

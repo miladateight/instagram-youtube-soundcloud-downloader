@@ -1,4 +1,4 @@
-# Atieght Downloader
+# Ateight Downloader
 
 **اللغة:** [English](README.md) | [فارسی](README.fa.md) | [العربية](README.ar.md) | [Deutsch](README.de.md)
 
@@ -46,7 +46,7 @@
 
 ### المثبت
 - **قائمة تفاعلية لاختيار الميزات** (whiptail على Linux، بديل نصي في غيره)
-- لافتة ASCII art بعلامة Atieght
+- لافتة ASCII art بعلامة Ateight
 - يسأل عن اسم البوت والرمز ومعرف المدير واسم المستخدم للدعم واسم البوت
 - اختيار المنصات والميزات
 - مفتاح API اختياري لـ Shazam
@@ -69,7 +69,7 @@ python3 install.py
 
 يسأل المثبت عن:
 
-- اسم البوت (افتراضي: Atieght Downloader)
+- اسم البوت (افتراضي: Ateight Downloader)
 - رمز البوت من BotFather
 - معرف المدير الرقمي في تيليجرام
 - اسم مستخدم المدير للدعم (اختياري)
@@ -211,7 +211,7 @@ global
 ## إعدادات `.env`
 
 ```env
-BOT_NAME=Atieght Downloader
+BOT_NAME=Ateight Downloader
 BOT_TOKEN=123456789:replace-me
 ADMIN_ID=123456789
 SUPPORT_USERNAME=

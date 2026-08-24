@@ -1,4 +1,4 @@
-# Atieght Downloader
+# Ateight Downloader
 
 **زبان:** [English](README.md) | [فارسی](README.fa.md) | [العربية](README.ar.md) | [Deutsch](README.de.md)
 
@@ -47,7 +47,7 @@
 
 ### نصب
 - **منوی تعاملی انتخاب ویژگی‌ها** (whiptail روی لینوکس، fallback متنی)
-- بنر ASCII art برند Atieght
+- بنر ASCII art برند Ateight
 - پرسیدن نام ربات، توکن، آیدی مدیر، username پشتیبانی و username ربات
 - انتخاب پلتفرم‌ها و قابلیت‌ها
 - API key اختیاری برای شزم
@@ -70,7 +70,7 @@ python3 install.py
 
 نصب‌کننده این موارد رو می‌پرسه:
 
-- نام ربات (پیش‌فرض: Atieght Downloader)
+- نام ربات (پیش‌فرض: Ateight Downloader)
 - توکن ربات از BotFather
 - آیدی عددی مدیر تلگرام
 - username مدیر تلگرام برای دکمه پشتیبانی (اختیاری)
@@ -214,7 +214,7 @@ cookies عمومی مدیر در `data/cookies.txt` ذخیره می‌شه و ب
 ## تنظیمات `.env`
 
 ```env
-BOT_NAME=Atieght Downloader
+BOT_NAME=Ateight Downloader
 BOT_TOKEN=123456789:replace-me
 ADMIN_ID=123456789
 SUPPORT_USERNAME=

@@ -1,4 +1,4 @@
-# Atieght Downloader
+# Ateight Downloader
 
 **Sprache:** [English](README.md) | [فارسی](README.fa.md) | [العربية](README.ar.md) | [Deutsch](README.de.md)
 
@@ -47,7 +47,7 @@ Das Projekt ist vollständig in Python geschrieben und enthält einen einfachen 
 
 ### Installer
 - **Interaktive Feature-Checkliste** (whiptail auf Linux, Text-Fallback anderswo)
-- Atieght ASCII-Art-Banner
+- Ateight ASCII-Art-Banner
 - Fragt nach Bot-Name, Token, Admin-ID, Support-Username und Bot-Username
 - Auswahl welche Plattformen und Features aktiviert werden sollen
 - Optionaler benutzerdefinierter Shazam-API-Schlüssel
@@ -70,7 +70,7 @@ python3 install.py
 
 Der Installer fragt nach:
 
-- Bot-Name (Standard: Atieght Downloader)
+- Bot-Name (Standard: Ateight Downloader)
 - Bot-Token von BotFather
 - Numerische Telegram-Admin-ID
 - Admin-Telegram-Username für den Support-Button (optional)
@@ -212,7 +212,7 @@ Wenn Instagram oder YouTube eine Sicherheitsabfrage verlangt:
 ## `.env`-Einstellungen
 
 ```env
-BOT_NAME=Atieght Downloader
+BOT_NAME=Ateight Downloader
 BOT_TOKEN=123456789:replace-me
 ADMIN_ID=123456789
 SUPPORT_USERNAME=

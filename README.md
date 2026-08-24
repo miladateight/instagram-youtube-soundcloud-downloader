@@ -1,4 +1,4 @@
-# Atieght Downloader
+# Ateight Downloader
 
 **Language:** [English](README.md) | [فارسی](README.fa.md) | [العربية](README.ar.md) | [Deutsch](README.de.md)
 
@@ -48,7 +48,7 @@ The project is written completely in Python and includes a simple Ubuntu install
 
 ### Installer
 - **Interactive feature checklist** (whiptail on Linux, text fallback elsewhere)
-- Atieght ASCII art banner
+- Ateight ASCII art banner
 - Asks for bot name, token, admin ID, support username, and bot username
 - Lets you choose which platforms and features to enable
 - Optional custom Shazam API key
@@ -71,7 +71,7 @@ python3 install.py
 
 The installer asks for:
 
-- Bot name (default: Atieght Downloader)
+- Bot name (default: Ateight Downloader)
 - Bot token from BotFather
 - Admin numeric Telegram ID
 - Admin Telegram username for the support button (optional)
@@ -215,7 +215,7 @@ This improves login reliability but cannot guarantee that a platform will never 
 ## `.env` Settings
 
 ```env
-BOT_NAME=Atieght Downloader
+BOT_NAME=Ateight Downloader
 BOT_TOKEN=123456789:replace-me
 ADMIN_ID=123456789
 SUPPORT_USERNAME=
