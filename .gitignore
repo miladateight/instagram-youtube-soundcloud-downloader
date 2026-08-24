@@ -8,3 +8,7 @@ __pycache__/
 *.part
 *.temp
 *.tmp
+graphify-out/
+.graphify-cache/
+*.graphify.tmp
+*.graphify.log
