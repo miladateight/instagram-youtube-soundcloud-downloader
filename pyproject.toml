@@ -1,7 +1,7 @@
 [project]
 name = "telegram-downloader-bot"
 version = "1.1.0"
-description = "A private Telegram downloader bot for YouTube, Instagram, and SoundCloud."
+description = "Self-hosted Telegram media downloader for YouTube, Instagram and SoundCloud."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
