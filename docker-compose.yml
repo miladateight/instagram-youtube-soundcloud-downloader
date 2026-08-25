@@ -1,0 +1,28 @@
+services:
+  bot:
+    image: ghcr.io/miladateight/instagram-youtube-soundcloud-downloader:latest
+    # To run your own build instead of the published image, comment out the
+    # image line above and uncomment this one:
+    # build: .
+    container_name: telegram-downloader
+    restart: unless-stopped
+
+    # Your BOT_TOKEN, ADMIN_ID and feature switches. Copy .env.example to .env
+    # and fill it in first.
+    env_file: .env
+
+    # These deliberately override whatever the .env file says. The paths in
+    # .env.example are relative and correct for a bare-metal install, but
+    # inside the container they would write to a layer that disappears with
+    # the container. Compose gives `environment` precedence over `env_file`,
+    # so the mounted volume always wins.
+    environment:
+      DOWNLOAD_DIR: /data/downloads
+      DATA_DIR: /data/state
+      LOG_DIR: /data/logs
+
+    volumes:
+      - ./data:/data
+      # If you use COOKIES_FILE, mount the file and point COOKIES_FILE at the
+      # path on the right-hand side:
+      # - ./cookies.txt:/data/cookies.txt:ro

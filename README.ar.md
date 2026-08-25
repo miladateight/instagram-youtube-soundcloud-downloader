@@ -86,6 +86,34 @@ python3 install.py
 
 لن يقوم البوت بتنزيل أي شيء حتى يتم تفعيله.
 
+## التشغيل عبر Docker
+
+الصورة الجاهزة تغنيك عن تثبيت Python و ffmpeg وسلسلة الاعتماديات على الخادم.
+هي نفس شيفرة الإصدار الموسوم، لكنها مبنية على GitHub Actions لا على جهازك.
+
+```bash
+curl -O https://raw.githubusercontent.com/miladateight/instagram-youtube-soundcloud-downloader/main/docker-compose.yml
+curl -o .env https://raw.githubusercontent.com/miladateight/instagram-youtube-soundcloud-downloader/main/.env.example
+# املأ BOT_TOKEN و ADMIN_ID
+docker compose up -d
+```
+
+التنزيلات والحالة والسجلات تبقى في مجلد `./data` بجوار ملف compose، فيمكن
+استبدال الحاوية أو ترقيتها دون فقدان قائمة الوصول:
+
+```bash
+docker compose pull && docker compose up -d
+```
+
+تُنشر الصورة على `ghcr.io/miladateight/instagram-youtube-soundcloud-downloader`. ولكل إصدار موسوم سجل موقَّع بالالتزام الذي
+بُني منه، ويمكنك التحقق منه قبل التشغيل:
+
+```bash
+gh attestation verify oci://ghcr.io/miladateight/instagram-youtube-soundcloud-downloader:latest --repo miladateight/instagram-youtube-soundcloud-downloader
+```
+
+ثم افتح البوت في تيليجرام بصفتك المشرف وأرسل `/activate`، تمامًا كالتثبيت العادي.
+
 ## أوامر البوت
 
 - `/start` يبدأ البوت؛ تُطلب اللغة مرة واحدة فقط

@@ -87,6 +87,35 @@ python3 install.py
 
 ربات تا فعال نشده چیزی دانلود نمی‌کنه.
 
+## اجرا با Docker
+
+با ایمیج آماده لازم نیست Python و ffmpeg و زنجیرهٔ وابستگی‌ها را روی سرور نصب
+کنی. همان کد نسخهٔ تگ‌خورده است، منتها به‌جای ماشین تو روی GitHub Actions ساخته
+شده.
+
+```bash
+curl -O https://raw.githubusercontent.com/miladateight/instagram-youtube-soundcloud-downloader/main/docker-compose.yml
+curl -o .env https://raw.githubusercontent.com/miladateight/instagram-youtube-soundcloud-downloader/main/.env.example
+# BOT_TOKEN و ADMIN_ID را پر کن
+docker compose up -d
+```
+
+دانلودها، وضعیت و لاگ‌ها در پوشهٔ `./data` کنار فایل compose می‌مانند، بنابراین
+کانتینر را می‌شود عوض یا به‌روز کرد بدون اینکه لیست دسترسی از دست برود:
+
+```bash
+docker compose pull && docker compose up -d
+```
+
+ایمیج روی `ghcr.io/miladateight/instagram-youtube-soundcloud-downloader` منتشر می‌شود. هر نسخهٔ تگ‌خورده یک سند امضاشده از
+کامیتی که از آن ساخته شده هم دارد و می‌توانی قبل از اجرا بررسی‌اش کنی:
+
+```bash
+gh attestation verify oci://ghcr.io/miladateight/instagram-youtube-soundcloud-downloader:latest --repo miladateight/instagram-youtube-soundcloud-downloader
+```
+
+بعد مثل نصب معمولی، ربات را در تلگرام به عنوان ادمین باز کن و `/activate` بفرست.
+
 ## دستورات ربات
 
 - `/start` شروع ربات؛ زبان فقط یک‌بار پرسیده می‌شه

@@ -87,6 +87,38 @@ Nach der Installation öffne den Bot in Telegram als Administrator und sende:
 
 Der Bot lädt nichts herunter, bis er aktiviert ist.
 
+## Mit Docker betreiben
+
+Das veröffentlichte Image erspart die Installation von Python, ffmpeg und der
+Abhängigkeitskette auf dem Host. Es ist derselbe Code wie ein getaggtes
+Release, gebaut von GitHub Actions statt auf deinem Rechner.
+
+```bash
+curl -O https://raw.githubusercontent.com/miladateight/instagram-youtube-soundcloud-downloader/main/docker-compose.yml
+curl -o .env https://raw.githubusercontent.com/miladateight/instagram-youtube-soundcloud-downloader/main/.env.example
+# BOT_TOKEN und ADMIN_ID eintragen
+docker compose up -d
+```
+
+Downloads, Zustand und Logs liegen im Ordner `./data` neben der Compose-Datei.
+Der Container lässt sich also ersetzen oder aktualisieren, ohne die Zugriffsliste
+zu verlieren:
+
+```bash
+docker compose pull && docker compose up -d
+```
+
+Das Image erscheint unter `ghcr.io/miladateight/instagram-youtube-soundcloud-downloader`. Jede getaggte Version trägt
+zusätzlich einen signierten Nachweis des Commits, aus dem sie gebaut wurde —
+vor dem Start prüfbar mit:
+
+```bash
+gh attestation verify oci://ghcr.io/miladateight/instagram-youtube-soundcloud-downloader:latest --repo miladateight/instagram-youtube-soundcloud-downloader
+```
+
+Danach den Bot in Telegram als Admin öffnen und `/activate` senden, genau wie
+bei einer Installation direkt auf dem System.
+
 ## Bot-Befehle
 
 - `/start` startet den Bot; Sprache wird nur einmal abgefragt
